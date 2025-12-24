@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuthStore } from '@/core/store/authStore';
 import { useModules } from '@/core/hooks/useModules';
 
@@ -18,21 +18,18 @@ export function useInventoryLabels() {
   const [labels, setLabels] = useState<InventoryLabel[]>([]);
   const [loading, setLoading] = useState(false);
   const { accessToken } = useAuthStore();
-  const { findModuleByCode, loading: modulesLoading } = useModules();
+  const { findModuleByCode, loading: modulesLoading, modules } = useModules();
+
+  const module = useMemo(() => findModuleByCode('inventory'), [findModuleByCode]);
+  const moduleId = useMemo(() => module?.id, [module]);
 
   useEffect(() => {
-    if (!accessToken || modulesLoading) return;
+    if (!accessToken || modulesLoading || !moduleId) return;
 
     const fetchLabels = async () => {
       setLoading(true);
       try {
-        const module = findModuleByCode('inventory');
-        if (!module) {
-          console.warn('Inventory module not found');
-          return;
-        }
-
-        const res = await fetch(`/api/modules/labels?moduleId=${module.id}`, {
+        const res = await fetch(`/api/modules/labels?moduleId=${moduleId}`, {
           headers: {
             Authorization: `Bearer ${accessToken}`,
           },
@@ -54,7 +51,7 @@ export function useInventoryLabels() {
     };
 
     fetchLabels();
-  }, [accessToken, modulesLoading, findModuleByCode]);
+  }, [accessToken, modulesLoading, moduleId]);
 
   const refetch = async () => {
     if (!accessToken) return;

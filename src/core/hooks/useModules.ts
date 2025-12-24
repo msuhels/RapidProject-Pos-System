@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '@/core/store/authStore';
 
 interface Module {
@@ -70,9 +70,9 @@ export function useModules() {
     modulesCachePromise = fetchModules();
   }, [accessToken]);
 
-  const findModuleByCode = (code: string) => {
+  const findModuleByCode = useCallback((code: string) => {
     return modules.find((m) => m.code === code || m.code === code.toUpperCase() || m.code === code.toLowerCase());
-  };
+  }, [modules]);
 
   const clearCache = () => {
     modulesCache = null;
