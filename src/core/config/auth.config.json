@@ -1,0 +1,33 @@
+{
+  "registration": {
+    "enabled": true,
+    "showOnLoginPage": true,
+    "requireEmailVerification": false,
+    "allowPublicRegistration": true,
+    "minPasswordLength": 6,
+    "requireStrongPassword": false
+  },
+  "login": {
+    "enabled": true,
+    "allowRememberMe": true,
+    "sessionDuration": 604800,
+    "maxLoginAttempts": 5,
+    "lockoutDuration": 900
+  },
+  "features": {
+    "passwordReset": true,
+    "emailVerification": false,
+    "twoFactorAuth": false,
+    "socialLogin": false
+  },
+  "ui": {
+    "showRegisterLink": true,
+    "showForgotPasswordLink": true,
+    "customBranding": {
+      "enabled": false,
+      "logo": null,
+      "primaryColor": null
+    }
+  }
+}
+

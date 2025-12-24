@@ -1,0 +1,35 @@
+{
+  "id": "template",
+  "name": "Template Module",
+  "version": "1.0.0",
+  "description": "Template module for creating new modules",
+  "routes": [
+    {
+      "path": "/template",
+      "component": "index",
+      "title": "Template Page",
+      "requiresAuth": true
+    }
+  ],
+  "api": {
+    "basePath": "/api/template",
+    "endpoints": [
+      {
+        "method": "GET",
+        "path": "",
+        "handler": "list",
+        "requiresAuth": true
+      }
+    ]
+  },
+  "navigation": {
+    "label": "Template",
+    "icon": "FileText",
+    "path": "/template",
+    "order": 99
+  },
+  "permissions": {
+    "read": "template:read"
+  }
+}
+

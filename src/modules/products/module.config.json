@@ -1,0 +1,50 @@
+{
+  "id": "products",
+  "name": "Products",
+  "version": "1.0.0",
+  "description": "Manage products with name, price, quantity, image, and category",
+  "enabled": true,
+  "routes": [
+    {
+      "path": "/products",
+      "component": "index",
+      "title": "Products",
+      "requiresAuth": true
+    }
+  ],
+  "api": {
+    "basePath": "/api/products",
+    "endpoints": [
+      { "method": "GET", "path": "", "handler": "list", "requiresAuth": true },
+      { "method": "POST", "path": "", "handler": "create", "requiresAuth": true },
+      { "method": "GET", "path": "/:id", "handler": "getById", "requiresAuth": true },
+      { "method": "PATCH", "path": "/:id", "handler": "update", "requiresAuth": true },
+      { "method": "DELETE", "path": "/:id", "handler": "delete", "requiresAuth": true },
+      { "method": "POST", "path": "/:id/duplicate", "handler": "duplicate", "requiresAuth": true },
+      { "method": "POST", "path": "/import", "handler": "import", "requiresAuth": true },
+      { "method": "GET", "path": "/export", "handler": "export", "requiresAuth": true }
+    ]
+  },
+  "navigation": {
+    "label": "Products",
+    "icon": "Store",
+    "path": "/products",
+    "order": 5
+  },
+  "permissions": {
+    "create": "products:create",
+    "read": "products:read",
+    "update": "products:update",
+    "delete": "products:delete",
+    "export": "products:export",
+    "import": "products:import",
+    "duplicate": "products:duplicate",
+    "manage_labels": "products:manage_labels",
+    "manage": "products:*"
+  },
+  "fields": {
+    "enabled": true,
+    "configPath": "./config/fields.config.ts"
+  }
+}
+

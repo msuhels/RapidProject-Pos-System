@@ -1,0 +1,50 @@
+{
+  "id": "carts",
+  "name": "Carts",
+  "version": "1.0.0",
+  "description": "Manage user carts with products",
+  "enabled": true,
+  "routes": [
+    {
+      "path": "/carts",
+      "component": "index",
+      "title": "Carts",
+      "requiresAuth": true
+    }
+  ],
+  "api": {
+    "basePath": "/api/carts",
+    "endpoints": [
+      { "method": "GET", "path": "", "handler": "list", "requiresAuth": true },
+      { "method": "POST", "path": "", "handler": "create", "requiresAuth": true },
+      { "method": "GET", "path": "/:id", "handler": "getById", "requiresAuth": true },
+      { "method": "PATCH", "path": "/:id", "handler": "update", "requiresAuth": true },
+      { "method": "DELETE", "path": "/:id", "handler": "delete", "requiresAuth": true },
+      { "method": "POST", "path": "/:id/duplicate", "handler": "duplicate", "requiresAuth": true },
+      { "method": "POST", "path": "/import", "handler": "import", "requiresAuth": true },
+      { "method": "GET", "path": "/export", "handler": "export", "requiresAuth": true }
+    ]
+  },
+  "navigation": {
+    "label": "Cart",
+    "icon": "ShoppingCart",
+    "path": "/carts",
+    "order": 6
+  },
+  "permissions": {
+    "create": "carts:create",
+    "read": "carts:read",
+    "update": "carts:update",
+    "delete": "carts:delete",
+    "export": "carts:export",
+    "import": "carts:import",
+    "duplicate": "carts:duplicate",
+    "manage_labels": "carts:manage_labels",
+    "manage": "carts:*"
+  },
+  "fields": {
+    "enabled": true,
+    "configPath": "./config/fields.config.ts"
+  }
+}
+

@@ -1,0 +1,49 @@
+{
+  "id": "inventory",
+  "name": "Inventory",
+  "version": "1.0.0",
+  "description": "Manages inventory levels for products across locations.",
+  "enabled": true,
+  "routes": [
+    {
+      "path": "/inventory",
+      "component": "index",
+      "title": "Inventory",
+      "requiresAuth": true
+    }
+  ],
+  "api": {
+    "basePath": "/api/inventory",
+    "endpoints": [
+      { "method": "GET", "path": "", "handler": "list", "requiresAuth": true },
+      { "method": "GET", "path": "/:id", "handler": "getById", "requiresAuth": true },
+      { "method": "PATCH", "path": "/:id", "handler": "update", "requiresAuth": true },
+      { "method": "DELETE", "path": "/:id", "handler": "delete", "requiresAuth": true },
+      { "method": "POST", "path": "/:id/duplicate", "handler": "duplicate", "requiresAuth": true },
+      { "method": "GET", "path": "/export", "handler": "export", "requiresAuth": true },
+      { "method": "POST", "path": "/import", "handler": "import", "requiresAuth": true }
+    ]
+  },
+  "navigation": {
+    "label": "Inventory",
+    "icon": "Boxes",
+    "path": "/inventory",
+    "order": 4
+  },
+  "permissions": {
+    "read": "inventory:read",
+    "update": "inventory:update",
+    "delete": "inventory:delete",
+    "export": "inventory:export",
+    "import": "inventory:import",
+    "duplicate": "inventory:duplicate",
+    "manage_labels": "inventory:manage_labels",
+    "manage": "inventory:*"
+  },
+  "fields": {
+    "enabled": true,
+    "configPath": "./config/fields.config.ts"
+  }
+}
+
+

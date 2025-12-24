@@ -1,0 +1,40 @@
+{
+  "id": "template_custom",
+  "name": "Custom Fields Module Template",
+  "version": "1.0.0",
+  "description": "REFERENCE ONLY: blueprint for modules with custom fields enabled",
+  "enabled": false,
+  "routes": [
+    {
+      "path": "/_templates/custom",
+      "component": "index",
+      "title": "Custom Fields Module Template",
+      "requiresAuth": true
+    }
+  ],
+  "api": {
+    "basePath": "/api/_templates/custom",
+    "endpoints": [
+      { "method": "GET", "path": "", "handler": "list", "requiresAuth": true },
+      { "method": "POST", "path": "", "handler": "create", "requiresAuth": true },
+      { "method": "GET", "path": "/:id", "handler": "getById", "requiresAuth": true },
+      { "method": "PATCH", "path": "/:id", "handler": "update", "requiresAuth": true },
+      { "method": "DELETE", "path": "/:id", "handler": "delete", "requiresAuth": true }
+    ]
+  },
+  "permissions": {
+    "create": "template_custom:create",
+    "read": "template_custom:read",
+    "update": "template_custom:update",
+    "delete": "template_custom:delete",
+    "export": "template_custom:export",
+    "manage": "template_custom:*"
+  },
+  "fields": {
+    "enabled": true,
+    "configPath": "./config/fields.config.ts"
+  },
+  "custom_field": true
+}
+
+

@@ -1,0 +1,39 @@
+{
+  "id": "template_static",
+  "name": "Static Module Template",
+  "version": "1.0.0",
+  "description": "REFERENCE ONLY: blueprint for modules without custom fields",
+  "enabled": false,
+  "routes": [
+    {
+      "path": "/_templates/static",
+      "component": "index",
+      "title": "Static Module Template",
+      "requiresAuth": true
+    }
+  ],
+  "api": {
+    "basePath": "/api/_templates/static",
+    "endpoints": [
+      { "method": "GET", "path": "", "handler": "list", "requiresAuth": true },
+      { "method": "POST", "path": "", "handler": "create", "requiresAuth": true },
+      { "method": "GET", "path": "/:id", "handler": "getById", "requiresAuth": true },
+      { "method": "PATCH", "path": "/:id", "handler": "update", "requiresAuth": true },
+      { "method": "DELETE", "path": "/:id", "handler": "delete", "requiresAuth": true }
+    ]
+  },
+  "permissions": {
+    "create": "template_static:create",
+    "read": "template_static:read",
+    "update": "template_static:update",
+    "delete": "template_static:delete",
+    "export": "template_static:export",
+    "manage": "template_static:*"
+  },
+  "fields": {
+    "enabled": true,
+    "configPath": "./config/fields.config.ts"
+  }
+}
+
+
