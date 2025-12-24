@@ -5,7 +5,11 @@
  * The module itself is auto-discovered by the main seed script.
  */
 
-export default async function seedCartsModule() {
+/**
+ * Seed function for carts module
+ * @param db - Optional database instance (if not provided, imports db directly)
+ */
+export default async function seedCartsModule(db?: any) {
   // Module fields are registered in the main seed script (scripts/seed.ts)
   // under the CARTS key in moduleFieldDefinitions.
   // This file exists for consistency with other modules.

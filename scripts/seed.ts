@@ -799,6 +799,33 @@ async function seed() {
     }
     console.log('');
 
+    
+    // ============================================================================
+    // 7. MODULE-SPECIFIC SEEDS (Register module fields and custom setup)
+    // ============================================================================
+    console.log('🌱 Running module-specific seeds...');
+    try {
+      const { loadAllModuleSeeds } = await import('../src/core/lib/seedLoader');
+      const moduleSeeds = await loadAllModuleSeeds();
+      
+      if (moduleSeeds.length > 0) {
+        console.log(`   Found ${moduleSeeds.length} module seed(s) to run`);
+        for (const { moduleId, seed } of moduleSeeds) {
+          try {
+            await seed(db);
+            console.log(`   ✅ Completed seed for module: ${moduleId}`);
+          } catch (error) {
+            console.error(`   ❌ Failed to run seed for module ${moduleId}:`, error);
+          }
+        }
+      } else {
+        console.log('   ℹ️  No module-specific seeds found');
+      }
+    } catch (error) {
+      console.error('   ⚠️  Error loading module seeds:', error);
+    }
+    console.log('');
+
     console.log('✨ Seed completed successfully!\n');
     console.log('📊 Summary:');
     console.log(`   - ${seededTenants.length} tenant(s) - Default tenant for new registrations`);

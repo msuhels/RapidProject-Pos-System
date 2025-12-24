@@ -8,8 +8,9 @@ const MODULE_CODE = 'PAYMENT_MANAGEMENT';
 /**
  * Seed function for payment_management module
  * This function is auto-discovered by scripts/seed.ts
+ * @param db - Optional database instance (if not provided, imports db directly)
  */
-export default async function seed() {
+export default async function seed(db?: any) {
   console.log(`🌱 Seeding payment_management module...`);
 
   // Find or create the module
@@ -55,4 +56,5 @@ export default async function seed() {
 
   console.log(`✅ payment_management module seeded successfully\n`);
 }
+
 
