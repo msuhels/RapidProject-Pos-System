@@ -7,9 +7,9 @@ const MODULES_DIR = join(process.cwd(), 'src', 'modules');
 
 /**
  * Seed function type that modules should export
- * @param db - Database instance (Drizzle ORM)
+ * @param db - Database instance (Drizzle ORM) - optional, as some modules import db directly
  */
-export type SeedFunction = (db: any) => Promise<void>;
+export type SeedFunction = (db?: any) => Promise<void>;
 
 /**
  * Discover all modules with seed files

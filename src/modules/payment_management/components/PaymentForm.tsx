@@ -220,7 +220,7 @@ export function PaymentForm({ form, onChange, paymentMethods = [] }: PaymentForm
                   <Label>{field.label}</Label>
                   <Textarea
                     value={form.notes || ''}
-                    onChange={(e) => updateField('notes', e.target.value || null)}
+                    onChange={(e) => updateField('notes', e.target.value || undefined)}
                     disabled={!editable}
                     rows={3}
                   />

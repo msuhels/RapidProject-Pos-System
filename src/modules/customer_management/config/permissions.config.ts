@@ -74,3 +74,4 @@ export const CUSTOMER_PERMISSIONS: CustomerPermissionDefinition[] = [
   },
 ];
 
+

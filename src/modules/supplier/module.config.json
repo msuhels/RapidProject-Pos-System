@@ -1,0 +1,44 @@
+{
+  "id": "supplier",
+  "name": "Supplier",
+  "version": "1.0.0",
+  "description": "Maintain supplier information for inventory sourcing and procurement workflows",
+  "enabled": true,
+  "routes": [
+    {
+      "path": "/supplier",
+      "component": "index",
+      "title": "Suppliers",
+      "requiresAuth": true
+    }
+  ],
+  "api": {
+    "basePath": "/api/suppliers",
+    "endpoints": [
+      { "method": "GET", "path": "", "handler": "list", "requiresAuth": true },
+      { "method": "POST", "path": "", "handler": "create", "requiresAuth": true },
+      { "method": "GET", "path": "/:id", "handler": "getById", "requiresAuth": true },
+      { "method": "PATCH", "path": "/:id", "handler": "update", "requiresAuth": true },
+      { "method": "DELETE", "path": "/:id", "handler": "delete", "requiresAuth": true }
+    ]
+  },
+  "permissions": {
+    "create": "supplier:create",
+    "read": "supplier:read",
+    "update": "supplier:update",
+    "delete": "supplier:delete",
+    "manage": "supplier:*"
+  },
+  "navigation": {
+    "label": "Suppliers",
+    "icon": "Truck",
+    "path": "/supplier",
+    "order": 15
+  },
+  "fields": {
+    "enabled": true,
+    "configPath": "./config/fields.config.ts"
+  },
+  "custom_field": true
+}
+

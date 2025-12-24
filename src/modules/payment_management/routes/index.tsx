@@ -25,7 +25,7 @@ const defaultForm: CreatePaymentInput = {
   paymentStatus: 'paid',
   transactionReference: null,
   paymentDate: new Date().toISOString(),
-  notes: null,
+  notes: '',
   customFields: {},
 };
 
@@ -141,7 +141,7 @@ export default function PaymentsPage() {
       paymentStatus: record.paymentStatus,
       transactionReference: record.transactionReference,
       paymentDate: record.paymentDate,
-      notes: record.notes,
+      notes: record.notes || '',
       customFields: record.customFields ?? {},
     });
     setDialogOpen(true);
