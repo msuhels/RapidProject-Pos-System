@@ -3,6 +3,9 @@ export interface Product {
   tenantId: string;
   name: string;
   price: string;
+  costPrice: string | null;
+  sellingPrice: string | null;
+  taxRate: string | null;
   quantity: string;
   image: string | null;
   category: string | null;
@@ -20,6 +23,9 @@ export interface Product {
 export interface CreateProductInput {
   name: string;
   price: string;
+  costPrice?: string;
+  sellingPrice?: string;
+  taxRate?: string;
   quantity: string;
   image?: string;
   category?: string;
@@ -32,6 +38,9 @@ export interface CreateProductInput {
 export interface UpdateProductInput {
   name?: string;
   price?: string;
+  costPrice?: string;
+  sellingPrice?: string;
+  taxRate?: string;
   quantity?: string;
   image?: string;
   category?: string;

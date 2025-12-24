@@ -27,6 +27,9 @@ export async function listProductsForTenant(
       or(
         ilike(products.name, searchTerm),
         ilike(products.price, searchTerm),
+        ilike(products.costPrice, searchTerm),
+        ilike(products.sellingPrice, searchTerm),
+        ilike(products.taxRate, searchTerm),
         ilike(products.quantity, searchTerm),
         ilike(products.category, searchTerm),
         ilike(products.sku, searchTerm),
@@ -48,10 +51,15 @@ export async function listProductsForTenant(
     category: r.category || null,
     sku: r.sku || null,
     location: r.location || null,
+    costPrice: r.costPrice || null,
+    sellingPrice: r.sellingPrice || null,
+    taxRate: r.taxRate || null,
     status: r.status || 'in_stock',
+    createdAt: r.createdAt.toISOString(),
+    updatedAt: r.updatedAt.toISOString(),
     createdBy: r.createdBy || null,
     updatedBy: r.updatedBy || null,
-    deletedAt: r.deletedAt || null,
+    deletedAt: r.deletedAt?.toISOString() || null,
   }));
 }
 
@@ -72,10 +80,15 @@ export async function getProductById(id: string, tenantId: string): Promise<Prod
     category: r.category || null,
     sku: r.sku || null,
     location: r.location || null,
+    costPrice: r.costPrice || null,
+    sellingPrice: r.sellingPrice || null,
+    taxRate: r.taxRate || null,
     status: r.status || 'in_stock',
+    createdAt: r.createdAt.toISOString(),
+    updatedAt: r.updatedAt.toISOString(),
     createdBy: r.createdBy || null,
     updatedBy: r.updatedBy || null,
-    deletedAt: r.deletedAt || null,
+    deletedAt: r.deletedAt?.toISOString() || null,
   };
 }
 
@@ -92,6 +105,9 @@ export async function createProduct(params: {
       tenantId,
       name: data.name,
       price: data.price,
+      costPrice: data.costPrice || null,
+      sellingPrice: data.sellingPrice || null,
+      taxRate: data.taxRate || null,
       quantity: data.quantity,
       image: data.image || null,
       category: data.category || null,
@@ -111,10 +127,15 @@ export async function createProduct(params: {
     category: result.category || null,
     sku: result.sku || null,
     location: result.location || null,
+    costPrice: result.costPrice || null,
+    sellingPrice: result.sellingPrice || null,
+    taxRate: result.taxRate || null,
     status: result.status || 'in_stock',
+    createdAt: result.createdAt.toISOString(),
+    updatedAt: result.updatedAt.toISOString(),
     createdBy: result.createdBy || null,
     updatedBy: result.updatedBy || null,
-    deletedAt: result.deletedAt || null,
+    deletedAt: result.deletedAt?.toISOString() || null,
   };
 }
 
@@ -134,6 +155,9 @@ export async function updateProduct(params: {
     .set({
       name: data.name ?? existing.name,
       price: data.price ?? existing.price,
+      costPrice: data.costPrice !== undefined ? data.costPrice || null : existing.costPrice,
+      sellingPrice: data.sellingPrice !== undefined ? data.sellingPrice || null : existing.sellingPrice,
+      taxRate: data.taxRate !== undefined ? data.taxRate || null : existing.taxRate,
       quantity: data.quantity ?? existing.quantity,
       image: data.image !== undefined ? data.image || null : existing.image,
       category: data.category !== undefined ? data.category || null : existing.category,
@@ -154,10 +178,15 @@ export async function updateProduct(params: {
     category: result.category || null,
     sku: result.sku || null,
     location: result.location || null,
+    costPrice: result.costPrice || null,
+    sellingPrice: result.sellingPrice || null,
+    taxRate: result.taxRate || null,
     status: result.status || 'in_stock',
+    createdAt: result.createdAt.toISOString(),
+    updatedAt: result.updatedAt.toISOString(),
     createdBy: result.createdBy || null,
     updatedBy: result.updatedBy || null,
-    deletedAt: result.deletedAt || null,
+    deletedAt: result.deletedAt?.toISOString() || null,
   };
 }
 
@@ -189,6 +218,9 @@ export async function duplicateProduct(
     data: {
       name: `${existing.name} (Copy)`,
       price: existing.price,
+      costPrice: existing.costPrice || undefined,
+      sellingPrice: existing.sellingPrice || undefined,
+      taxRate: existing.taxRate || undefined,
       quantity: existing.quantity,
       image: existing.image || undefined,
       category: existing.category || undefined,
