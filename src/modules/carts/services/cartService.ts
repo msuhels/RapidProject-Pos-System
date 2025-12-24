@@ -76,18 +76,55 @@ export async function createCart(params: {
 }): Promise<Cart> {
   const { data, tenantId, userId } = params;
 
-  // Fetch product details to store name and price
+  // Fetch product details including quantity
   const productResult = await db
     .select({
       name: products.name,
       price: products.price,
+      quantity: products.quantity,
     })
     .from(products)
     .where(eq(products.id, data.productId))
     .limit(1);
 
-  const productName = productResult.length > 0 ? productResult[0].name : null;
-  const productPrice = productResult.length > 0 ? productResult[0].price : null;
+  if (productResult.length === 0) {
+    throw new Error('Product not found');
+  }
+
+  const product = productResult[0];
+  const productName = product.name;
+  const productPrice = product.price;
+  const availableQuantity = parseInt(product.quantity) || 0;
+  const requestedQuantity = parseInt(data.quantity) || 0;
+
+  // Check if user already has this product in their cart
+  const existingCarts = await db
+    .select()
+    .from(carts)
+    .where(
+      and(
+        eq(carts.tenantId, tenantId),
+        eq(carts.userId, data.userId),
+        eq(carts.productId, data.productId),
+        isNull(carts.deletedAt),
+      ),
+    );
+
+  // Calculate total quantity already in cart for this product
+  const totalInCart = existingCarts.reduce((sum, cart) => {
+    return sum + (parseInt(cart.quantity) || 0);
+  }, 0);
+
+  // Check if adding this quantity would exceed available stock
+  const totalAfterAdd = totalInCart + requestedQuantity;
+  if (totalAfterAdd > availableQuantity) {
+    const available = availableQuantity - totalInCart;
+    throw new Error(
+      available > 0
+        ? `Insufficient stock. You can add up to ${available} more item(s). You already have ${totalInCart} in your cart.`
+        : `Insufficient stock. All available items (${availableQuantity}) are already in your cart.`,
+    );
+  }
 
   const [cartResult] = await db
     .insert(carts)
@@ -127,25 +164,60 @@ export async function updateCart(params: {
   if (!existing) return null;
 
   const finalProductId = data.productId ?? existing.productId;
+  const finalQuantity = data.quantity ?? existing.quantity;
 
-  // Fetch product details if productId changed
-  let productName = existing.productName;
-  let productPrice = existing.productPrice;
-  
-  if (data.productId && data.productId !== existing.productId) {
-    const productResult = await db
-      .select({
-        name: products.name,
-        price: products.price,
-      })
-      .from(products)
-      .where(eq(products.id, finalProductId))
-      .limit(1);
+  // Fetch product details including quantity
+  const productResult = await db
+    .select({
+      name: products.name,
+      price: products.price,
+      quantity: products.quantity,
+    })
+    .from(products)
+    .where(eq(products.id, finalProductId))
+    .limit(1);
 
-    if (productResult.length > 0) {
-      productName = productResult[0].name;
-      productPrice = productResult[0].price;
+  if (productResult.length === 0) {
+    throw new Error('Product not found');
+  }
+
+  const product = productResult[0];
+  const productName = product.name;
+  const productPrice = product.price;
+  const availableQuantity = parseInt(product.quantity) || 0;
+  const requestedQuantity = parseInt(finalQuantity) || 0;
+
+  // Check if user already has this product in their cart (excluding current cart)
+  const existingCarts = await db
+    .select()
+    .from(carts)
+    .where(
+      and(
+        eq(carts.tenantId, tenantId),
+        eq(carts.userId, existing.userId),
+        eq(carts.productId, finalProductId),
+        isNull(carts.deletedAt),
+      ),
+    );
+
+  // Calculate total quantity already in cart for this product (excluding current cart)
+  const totalInCart = existingCarts.reduce((sum, cart) => {
+    if (cart.id === id) {
+      // Exclude the current cart being updated
+      return sum;
     }
+    return sum + (parseInt(cart.quantity) || 0);
+  }, 0);
+
+  // Check if updating this quantity would exceed available stock
+  const totalAfterUpdate = totalInCart + requestedQuantity;
+  if (totalAfterUpdate > availableQuantity) {
+    const available = availableQuantity - totalInCart;
+    throw new Error(
+      available > 0
+        ? `Insufficient stock. You can add up to ${available} more item(s). You already have ${totalInCart} in your cart.`
+        : `Insufficient stock. All available items (${availableQuantity}) are already in your cart.`,
+    );
   }
 
   const [cartResult] = await db

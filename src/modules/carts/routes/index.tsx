@@ -13,6 +13,7 @@ import { Label } from '@/core/components/ui/label';
 import { LoadingSpinner } from '@/core/components/common/LoadingSpinner';
 import { usePermissions } from '@/core/hooks/usePermissions';
 import { useDebounce } from '@/core/hooks/useDebounce';
+import { useAuthStore } from '@/core/store/authStore';
 import type { Cart, CreateCartInput } from '../types';
 import { CartForm } from '../components/CartForm';
 import { CartTable } from '../components/CartTable';
@@ -30,7 +31,6 @@ export default function CartsPage() {
   const [carts, setCarts] = useState<Cart[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
-  const [userIdFilter, setUserIdFilter] = useState<string>('all');
   const [productIdFilter, setProductIdFilter] = useState<string>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [labelsDialogOpen, setLabelsDialogOpen] = useState(false);
@@ -40,6 +40,7 @@ export default function CartsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { hasPermission } = usePermissions();
+  const { user } = useAuthStore();
   const debouncedSearch = useDebounce(search, 500);
   const { labels } = useCartLabels();
 
@@ -54,11 +55,15 @@ export default function CartsPage() {
   const showActions = canUpdate || canDelete || canDuplicate;
 
   const fetchCarts = useCallback(async () => {
+    if (!user?.id) {
+      setCarts([]);
+      return;
+    }
+
     setLoading(true);
     try {
       const params = new URLSearchParams();
       if (debouncedSearch) params.set('search', debouncedSearch);
-      if (userIdFilter !== 'all') params.set('userId', userIdFilter);
       if (productIdFilter !== 'all') params.set('productId', productIdFilter);
 
       const query = params.toString();
@@ -78,7 +83,7 @@ export default function CartsPage() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, userIdFilter, productIdFilter]);
+  }, [debouncedSearch, productIdFilter, user?.id]);
 
   useEffect(() => {
     fetchCarts();
@@ -131,10 +136,13 @@ export default function CartsPage() {
       toast.error('Quantity is required');
       return;
     }
-    if (!form.userId.trim()) {
-      toast.error('User ID is required');
+    if (!user?.id) {
+      toast.error('You must be logged in to save a cart');
       return;
     }
+    
+    // Ensure userId is set to current user
+    const formData = { ...form, userId: user.id };
 
     setSaving(true);
     try {
@@ -144,7 +152,7 @@ export default function CartsPage() {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(formData),
       });
 
       const json = await res.json();
@@ -290,7 +298,6 @@ export default function CartsPage() {
     }
   };
 
-  const userIds = Array.from(new Set(carts.map((c) => c.userId).filter(Boolean)));
   const productIds = Array.from(new Set(carts.map((c) => c.productId).filter(Boolean)));
 
   const toggleLabel = (labelId: string) => {
@@ -304,11 +311,10 @@ export default function CartsPage() {
 
   const clearFilters = () => {
     setSearch('');
-    setUserIdFilter('all');
     setProductIdFilter('all');
   };
 
-  const hasActiveFilters = search || userIdFilter !== 'all' || productIdFilter !== 'all';
+  const hasActiveFilters = search || productIdFilter !== 'all';
 
   return (
     <ProtectedPage permission="carts:read" title="Carts" description="Manage user carts">
@@ -380,15 +386,6 @@ export default function CartsPage() {
                 )}
               </div>
               <div className="flex flex-wrap gap-2 items-center">
-                <Select
-                  value={userIdFilter}
-                  onChange={(e) => setUserIdFilter(e.target.value)}
-                  options={[
-                    { value: 'all', label: 'All Users' },
-                    ...userIds.map((uid) => ({ value: uid, label: uid })),
-                  ]}
-                  className="w-[180px]"
-                />
                 <Select
                   value={productIdFilter}
                   onChange={(e) => setProductIdFilter(e.target.value)}

@@ -120,6 +120,13 @@
       "when": 1766564189161,
       "tag": "0016_great_stature",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1766569893892,
+      "tag": "0017_brief_sally_floyd",
+      "breakpoints": true
     }
   ]
 }

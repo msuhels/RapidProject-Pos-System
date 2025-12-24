@@ -20,6 +20,19 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       return NextResponse.json({ error: 'Tenant not found for user' }, { status: 400 });
     }
 
+    // First, verify the cart belongs to the current user
+    const { getCartById } = await import('../../services/cartService');
+    const existingCart = await getCartById(params.id, tenantId);
+    
+    if (!existingCart) {
+      return NextResponse.json({ error: 'Cart not found' }, { status: 404 });
+    }
+    
+    // Ensure user can only delete their own carts
+    if (existingCart.userId !== userId) {
+      return NextResponse.json({ error: 'You can only delete your own carts' }, { status: 403 });
+    }
+
     const success = await deleteCart(params.id, tenantId, userId);
 
     if (!success) {

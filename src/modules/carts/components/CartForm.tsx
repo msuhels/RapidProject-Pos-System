@@ -13,7 +13,7 @@ interface CartFormProps {
 const STANDARD_FIELD_CONFIG = [
   { code: 'productId', label: 'Product ID', type: 'text' as const },
   { code: 'quantity', label: 'Quantity', type: 'text' as const },
-  { code: 'userId', label: 'User ID', type: 'text' as const },
+  // userId is automatically set to current user, so we don't show it in the form
 ] as const;
 
 export function CartForm({ form, onChange }: CartFormProps) {

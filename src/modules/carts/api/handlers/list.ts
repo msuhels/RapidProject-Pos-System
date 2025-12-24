@@ -22,10 +22,10 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || undefined;
-    const userIdFilter = searchParams.get('userId') || undefined;
     const productId = searchParams.get('productId') || undefined;
 
-    const records = await listCartsForTenant(tenantId, { search, userId: userIdFilter, productId });
+    // Automatically filter by current user's ID
+    const records = await listCartsForTenant(tenantId, { search, userId: userId, productId });
 
     return NextResponse.json({ success: true, data: records }, { status: 200 });
   } catch (error) {

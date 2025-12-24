@@ -22,6 +22,20 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     }
 
     const body = await request.json();
+    
+    // First, get the existing cart to verify ownership
+    const { getCartById } = await import('../../services/cartService');
+    const existingCart = await getCartById(params.id, tenantId);
+    
+    if (!existingCart) {
+      return NextResponse.json({ error: 'Cart not found' }, { status: 404 });
+    }
+    
+    // Ensure user can only update their own carts
+    if (existingCart.userId !== userId) {
+      return NextResponse.json({ error: 'You can only update your own carts' }, { status: 403 });
+    }
+
     const validation = updateCartSchema.safeParse(body);
 
     if (!validation.success) {
@@ -31,21 +45,33 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       );
     }
 
-    const record = await updateCart({
-      id: params.id,
-      tenantId,
-      userId,
-      data: validation.data,
-    });
+    // Ensure userId is set to current user (cannot be changed)
+    const updateData = { ...validation.data, userId };
 
-    if (!record) {
-      return NextResponse.json({ error: 'Cart not found' }, { status: 404 });
+    try {
+      const record = await updateCart({
+        id: params.id,
+        tenantId,
+        userId,
+        data: updateData,
+      });
+
+      if (!record) {
+        return NextResponse.json({ error: 'Cart not found' }, { status: 404 });
+      }
+
+      return NextResponse.json({ success: true, data: record }, { status: 200 });
+    } catch (error) {
+      // If it's a validation error from the service, return it
+      if (error instanceof Error && error.message.includes('Insufficient stock')) {
+        return NextResponse.json({ error: error.message }, { status: 400 });
+      }
+      throw error;
     }
-
-    return NextResponse.json({ success: true, data: record }, { status: 200 });
   } catch (error) {
     console.error('Cart update error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
 

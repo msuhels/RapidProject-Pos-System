@@ -31,16 +31,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const record = await createCart({
-      data: validation.data,
-      tenantId,
-      userId,
-    });
+    try {
+      const record = await createCart({
+        data: validation.data,
+        tenantId,
+        userId,
+      });
 
-    return NextResponse.json({ success: true, data: record }, { status: 201 });
+      return NextResponse.json({ success: true, data: record }, { status: 201 });
+    } catch (error) {
+      // If it's a validation error from the service, return it
+      if (error instanceof Error && error.message.includes('Insufficient stock')) {
+        return NextResponse.json({ error: error.message }, { status: 400 });
+      }
+      throw error;
+    }
   } catch (error) {
     console.error('Cart create error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
 

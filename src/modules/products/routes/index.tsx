@@ -344,8 +344,15 @@ export default function ProductsPage() {
       return;
     }
 
-    if (!cartQuantity.trim() || parseInt(cartQuantity) <= 0) {
-      toast.error('Please enter a valid quantity');
+    const requestedQty = parseInt(cartQuantity);
+    if (!cartQuantity.trim() || isNaN(requestedQty) || requestedQty <= 0) {
+      toast.error('Please enter a valid quantity greater than 0');
+      return;
+    }
+
+    const availableQty = parseInt(selectedProduct.quantity) || 0;
+    if (requestedQty > availableQty) {
+      toast.error(`Insufficient stock. Available quantity: ${availableQty}`);
       return;
     }
 
@@ -543,16 +550,31 @@ export default function ProductsPage() {
                   <p className="text-sm text-muted-foreground">
                     <span className="font-medium">Price:</span> {selectedProduct.price}
                   </p>
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-medium">Available Quantity:</span> {selectedProduct.quantity}
+                  </p>
                   <div className="space-y-2">
                     <Label htmlFor="cart-quantity">Quantity</Label>
                     <Input
                       id="cart-quantity"
                       type="number"
                       min="1"
+                      max={selectedProduct.quantity}
                       value={cartQuantity}
-                      onChange={(e) => setCartQuantity(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const maxQty = parseInt(selectedProduct.quantity) || 0;
+                        if (val === '' || parseInt(val) <= maxQty) {
+                          setCartQuantity(val);
+                        }
+                      }}
                       placeholder="Enter quantity"
                     />
+                    {parseInt(cartQuantity) > (parseInt(selectedProduct.quantity) || 0) && (
+                      <p className="text-sm text-destructive">
+                        Quantity cannot exceed available stock ({selectedProduct.quantity})
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
