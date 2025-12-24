@@ -1,0 +1,53 @@
+{
+  "id": "payment_management",
+  "name": "Payment Management",
+  "version": "1.0.0",
+  "description": "Track all payments received against sales, including partial payments, refunds, and payment methods",
+  "enabled": true,
+  "routes": [
+    {
+      "path": "/payment_management",
+      "component": "index",
+      "title": "Payments",
+      "requiresAuth": true
+    }
+  ],
+  "api": {
+    "basePath": "/api/payments",
+    "endpoints": [
+      { "method": "GET", "path": "", "handler": "list", "requiresAuth": true },
+      { "method": "POST", "path": "", "handler": "create", "requiresAuth": true },
+      { "method": "GET", "path": "/:id", "handler": "getById", "requiresAuth": true },
+      { "method": "PATCH", "path": "/:id", "handler": "update", "requiresAuth": true },
+      { "method": "POST", "path": "/:id/reverse", "handler": "reverse", "requiresAuth": true },
+      { "method": "GET", "path": "/methods", "handler": "listMethods", "requiresAuth": true },
+      { "method": "POST", "path": "/methods", "handler": "createMethod", "requiresAuth": true },
+      { "method": "PATCH", "path": "/methods/:id", "handler": "updateMethod", "requiresAuth": true },
+      { "method": "DELETE", "path": "/methods/:id", "handler": "deleteMethod", "requiresAuth": true },
+      { "method": "POST", "path": "/import", "handler": "import", "requiresAuth": true },
+      { "method": "GET", "path": "/export", "handler": "export", "requiresAuth": true }
+    ]
+  },
+  "permissions": {
+    "view_payment": "payment_management:view_payment",
+    "create_payment": "payment_management:create_payment",
+    "update_payment_status": "payment_management:update_payment_status",
+    "reverse_payment": "payment_management:reverse_payment",
+    "manage_payment_methods": "payment_management:manage_payment_methods",
+    "export": "payment_management:export",
+    "import": "payment_management:import",
+    "manage": "payment_management:*"
+  },
+  "navigation": {
+    "label": "Payments",
+    "icon": "CreditCard",
+    "path": "/payment_management",
+    "order": 12
+  },
+  "fields": {
+    "enabled": true,
+    "configPath": "./config/fields.config.ts"
+  },
+  "custom_field": true
+}
+
