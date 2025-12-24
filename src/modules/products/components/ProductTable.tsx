@@ -31,6 +31,16 @@ const STANDARD_FIELDS = [
   { code: 'quantity', label: 'Quantity', render: (p: Product) => p.quantity },
   { code: 'image', label: 'Image', render: (p: Product) => p.image ? 'Yes' : 'No' },
   { code: 'category', label: 'Category', render: (p: Product) => p.category || '-' },
+  { code: 'costPrice', label: 'Cost Price', render: (p: Product) => p.costPrice || '-' },
+  { code: 'sellingPrice', label: 'Selling Price', render: (p: Product) => p.sellingPrice || '-' },
+  { code: 'taxRate', label: 'Tax Rate', render: (p: Product) => p.taxRate || '-' },
+  { code: 'location', label: 'Location', render: (p: Product) => p.location || '-' },
+  { code: 'status', label: 'Status', render: (p: Product) => p.status || '-' },
+  { code: 'createdAt', label: 'Created At', render: (p: Product) => p.createdAt || '-' },
+  { code: 'updatedAt', label: 'Updated At', render: (p: Product) => p.updatedAt || '-' },
+  { code: 'createdBy', label: 'Created By', render: (p: Product) => p.createdBy || '-' },
+  { code: 'updatedBy', label: 'Updated By', render: (p: Product) => p.updatedBy || '-' },
+  { code: 'deletedAt', label: 'Deleted At', render: (p: Product) => p.deletedAt || '-' },
 ] as const;
 
 export function ProductTable({

@@ -23,9 +23,12 @@ const STANDARD_FIELD_CONFIG = [
   { code: 'quantity', label: 'Quantity', type: 'text' as const },
   { code: 'image', label: 'Image URL', type: 'url' as const },
   { code: 'category', label: 'Category', type: 'text' as const },
-  { code: 'sku', label: 'SKU', type: 'text' as const },
+  { code: 'sku', label: 'SKU / Barcode', type: 'text' as const },
   { code: 'location', label: 'Location', type: 'text' as const },
   { code: 'status', label: 'Status', type: 'select' as const },
+  { code: 'costPrice', label: 'Cost Price', type: 'number' as const },
+  { code: 'sellingPrice', label: 'Selling Price', type: 'number' as const },
+  { code: 'taxRate', label: 'Tax Rate', type: 'number' as const },
 ] as const;
 
 export function ProductForm({ form, onChange }: ProductFormProps) {
