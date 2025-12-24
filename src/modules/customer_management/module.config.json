@@ -1,0 +1,49 @@
+{
+  "id": "customer_management",
+  "name": "Customer Management",
+  "version": "1.0.0",
+  "description": "Maintain customer records, contact details, and purchase history, including balances and sales tracking",
+  "enabled": true,
+  "routes": [
+    {
+      "path": "/customer_management",
+      "component": "index",
+      "title": "Customers",
+      "requiresAuth": true
+    }
+  ],
+  "api": {
+    "basePath": "/api/customers",
+    "endpoints": [
+      { "method": "GET", "path": "", "handler": "list", "requiresAuth": true },
+      { "method": "POST", "path": "", "handler": "create", "requiresAuth": true },
+      { "method": "GET", "path": "/:id", "handler": "getById", "requiresAuth": true },
+      { "method": "PATCH", "path": "/:id", "handler": "update", "requiresAuth": true },
+      { "method": "DELETE", "path": "/:id", "handler": "delete", "requiresAuth": true },
+      { "method": "POST", "path": "/import", "handler": "import", "requiresAuth": true },
+      { "method": "GET", "path": "/export", "handler": "export", "requiresAuth": true }
+    ]
+  },
+  "permissions": {
+    "create": "customer_management:create",
+    "read": "customer_management:read",
+    "update": "customer_management:update",
+    "deactivate": "customer_management:deactivate",
+    "delete": "customer_management:delete",
+    "export": "customer_management:export",
+    "import": "customer_management:import",
+    "manage": "customer_management:*"
+  },
+  "navigation": {
+    "label": "Customers",
+    "icon": "Users",
+    "path": "/customer_management",
+    "order": 10
+  },
+  "fields": {
+    "enabled": true,
+    "configPath": "./config/fields.config.ts"
+  },
+  "custom_field": true
+}
+
