@@ -97,11 +97,22 @@ export async function routeApiRequest(
     console.log(`[API Router] Available endpoints:`, allEndpoints.map(e => `${e.endpoint.method} ${e.basePath}${e.endpoint.path}`));
   }
 
+  // Sort endpoints to prioritize static paths over dynamic paths
+  // E.g., /api/customers/export should match before /api/customers/:id
+  const sortedEndpoints = [...allEndpoints].sort((a, b) => {
+    const aIsDynamic = a.endpoint.path.includes(':');
+    const bIsDynamic = b.endpoint.path.includes(':');
+
+    if (aIsDynamic && !bIsDynamic) return 1; // b (static) before a (dynamic)
+    if (!aIsDynamic && bIsDynamic) return -1; // a (static) before b (dynamic)
+    return 0; // keep original order for same type
+  });
+
   // Find matching endpoint
   let matchedEndpoint: { moduleId: string; basePath: string; endpoint: ModuleApiEndpoint } | null = null;
   let routeParams: Record<string, string> = {};
 
-  for (const { moduleId, basePath, endpoint } of allEndpoints) {
+  for (const { moduleId, basePath, endpoint } of sortedEndpoints) {
     // Check if method matches first (faster check)
     if (endpoint.method !== request.method) {
       continue;

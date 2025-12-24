@@ -366,49 +366,41 @@ export default function PaymentsPage() {
       title="Payments"
       description="Track all payments received against sales, including partial payments, refunds, and payment methods"
     >
-      <div className="w-full px-4 py-6 space-y-6">
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">Payments</h1>
-              <p className="text-muted-foreground mt-1">
-                Track all payments received against sales, including partial payments, refunds, and payment methods
-              </p>
-            </div>
+      <div className="w-full px-4 py-6 space-y-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-2xl font-bold">Payments</CardTitle>
             <div className="flex gap-2">
               {canCreate && (
-                <Button onClick={openCreate}>
+                <Button size="sm" onClick={openCreate}>
                   <Plus className="h-4 w-4 mr-2" />
                   Add Payment
                 </Button>
               )}
               {canManageMethods && (
-                <Button variant="outline" onClick={() => openMethodDialog()}>
+                <Button variant="outline" size="sm" onClick={() => openMethodDialog()}>
                   <CreditCard className="h-4 w-4 mr-2" />
                   Payment Methods
                 </Button>
               )}
               {canExport && (
-                <Button variant="outline" onClick={handleExport}>
+                <Button variant="outline" size="sm" onClick={handleExport}>
                   <Download className="h-4 w-4 mr-2" />
                   Export
                 </Button>
               )}
               {canImport && (
-                <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+                <Button variant="outline" size="sm" onClick={() => setImportDialogOpen(true)}>
                   <Upload className="h-4 w-4 mr-2" />
                   Import
                 </Button>
               )}
-              <Button variant="ghost" size="icon" onClick={fetchRecords} title="Refresh">
+              <Button variant="ghost" size="sm" onClick={fetchRecords}>
                 <RefreshCcw className="h-4 w-4" />
               </Button>
             </div>
-          </div>
-        </div>
-
-        <Card>
-          <CardContent className="pt-6">
+          </CardHeader>
+          <CardContent className="space-y-4">
             <div className="space-y-4">
               {/* Search and Filters Section */}
               <div className="space-y-4">
