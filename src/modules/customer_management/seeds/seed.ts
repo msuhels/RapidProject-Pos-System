@@ -8,8 +8,9 @@ const MODULE_CODE = 'CUSTOMER_MANAGEMENT';
 /**
  * Seed function for customer_management module
  * This function is auto-discovered by scripts/seed.ts
+ * @param db - Optional database instance (if not provided, imports db directly)
  */
-export default async function seed() {
+export default async function seed(db?: any) {
   console.log(`🌱 Seeding customer_management module...`);
 
   // Find or create the module
@@ -46,4 +47,5 @@ export default async function seed() {
 
   console.log(`✅ customer_management module seeded successfully\n`);
 }
+
 

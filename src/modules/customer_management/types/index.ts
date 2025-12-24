@@ -41,3 +41,4 @@ export interface CustomerListFilters {
   hasOutstandingBalance?: boolean;
 }
 
+
