@@ -27,10 +27,36 @@ interface ProductTableProps {
 }
 
 const STANDARD_FIELDS = [
+  { 
+    code: 'image', 
+    label: 'Image', 
+    render: (p: Product) => {
+      if (!p.image) {
+        return <span className="text-muted-foreground text-xs">No image</span>;
+      }
+      return (
+        <div className="relative">
+          <img 
+            src={p.image} 
+            alt={p.name}
+            className="w-12 h-12 object-cover rounded border"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+              const fallback = target.nextElementSibling as HTMLElement;
+              if (fallback) {
+                fallback.style.display = 'block';
+              }
+            }}
+          />
+          <span className="hidden text-muted-foreground text-xs">Failed to load</span>
+        </div>
+      );
+    }
+  },
   { code: 'name', label: 'Name', render: (p: Product) => p.name },
   { code: 'price', label: 'Price', render: (p: Product) => p.price },
   { code: 'quantity', label: 'Quantity', render: (p: Product) => p.quantity, superAdminOnly: true },
-  { code: 'image', label: 'Image', render: (p: Product) => p.image ? 'Yes' : 'No' },
   { code: 'category', label: 'Category', render: (p: Product) => p.category || '-' },
   { code: 'costPrice', label: 'Cost Price', render: (p: Product) => p.costPrice || '-' },
   { code: 'sellingPrice', label: 'Selling Price', render: (p: Product) => p.sellingPrice || '-' },
