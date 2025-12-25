@@ -9,13 +9,14 @@ import {
   jsonb,
   index,
 } from 'drizzle-orm/pg-core';
-import { tenants } from '@/core/lib/db/baseSchema';
+import { tenants, users } from '@/core/lib/db/baseSchema';
 
 export const customers = pgTable(
   'customers',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
     name: varchar('name', { length: 255 }).notNull(),
     phoneNumber: varchar('phone_number', { length: 30 }),
     email: varchar('email', { length: 255 }),
@@ -31,6 +32,7 @@ export const customers = pgTable(
   },
   (table) => ({
     tenantIdx: index('idx_customers_tenant').on(table.tenantId),
+    userIdIdx: index('idx_customers_user').on(table.userId),
     nameIdx: index('idx_customers_name').on(table.name),
     emailIdx: index('idx_customers_email').on(table.email),
     phoneIdx: index('idx_customers_phone').on(table.phoneNumber),

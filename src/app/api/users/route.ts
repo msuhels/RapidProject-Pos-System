@@ -213,9 +213,21 @@ export async function POST(request: NextRequest) {
     });
     
     // If a specific role was requested (and different from default), update it
+    let finalRoleCode: string | null = null;
     if (data.roleId) {
       console.log('[User Create] Specific role requested:', data.roleId);
-      const { userRoles } = await import('@/core/lib/db/baseSchema');
+      const { userRoles, roles } = await import('@/core/lib/db/baseSchema');
+      
+      // Get the role code to check if it's USER
+      const roleInfo = await db
+        .select({ code: roles.code })
+        .from(roles)
+        .where(eq(roles.id, data.roleId))
+        .limit(1);
+      
+      if (roleInfo.length > 0) {
+        finalRoleCode = roleInfo[0].code;
+      }
       
       // Remove the default role that was auto-assigned
       await db
@@ -237,6 +249,39 @@ export async function POST(request: NextRequest) {
       console.log('[User Create] Role assigned successfully');
     } else {
       console.log('[User Create] No specific role requested, using default role from createUser');
+      // Get the default role code
+      const { getDefaultUserRole } = await import('@/core/lib/roles');
+      const defaultRole = await getDefaultUserRole(targetTenantId);
+      if (defaultRole) {
+        finalRoleCode = defaultRole.code;
+      }
+    }
+    
+    // Create customer record if user has "USER" role (if not already created by createUser)
+    if (finalRoleCode === 'USER' && targetTenantId) {
+      try {
+        const { getCustomerByUserId, createCustomer } = await import('@/modules/customer_management/services/customerService');
+        // Check if customer already exists
+        const existingCustomer = await getCustomerByUserId(user.id, targetTenantId);
+        if (!existingCustomer) {
+          console.log('[User Create] Creating customer record for user with USER role');
+          await createCustomer({
+            data: {
+              name: user.fullName || user.email || 'Customer',
+              email: user.email,
+              phoneNumber: user.phoneNumber || undefined,
+              isActive: true,
+            },
+            tenantId: targetTenantId,
+            userId: userId,
+            linkedUserId: user.id,
+          });
+          console.log('[User Create] Customer record created successfully');
+        }
+      } catch (error) {
+        console.error('[User Create] Failed to create customer record:', error);
+        // Don't fail user creation if customer creation fails
+      }
     }
     
     // Return user data (without password hash)

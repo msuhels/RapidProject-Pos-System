@@ -1,6 +1,7 @@
 export interface CustomerRecord {
   id: string;
   tenantId: string;
+  userId?: string | null;
   name: string;
   phoneNumber?: string | null;
   email?: string | null;
