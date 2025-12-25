@@ -18,6 +18,7 @@ import type { Cart, CreateCartInput } from '../types';
 import { CartForm } from '../components/CartForm';
 import { CartTable } from '../components/CartTable';
 import { CartLabelsDialog } from '../components/CartLabelsDialog';
+import { CheckoutSummary } from '../components/CheckoutSummary';
 import { useCartLabels } from '../hooks/useCartLabels';
 
 const defaultForm: CreateCartInput = {
@@ -34,6 +35,7 @@ export default function CartsPage() {
   const [productIdFilter, setProductIdFilter] = useState<string>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [labelsDialogOpen, setLabelsDialogOpen] = useState(false);
+  const [showCheckoutSummary, setShowCheckoutSummary] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<CreateCartInput>(defaultForm);
   const [saving, setSaving] = useState(false);
@@ -220,28 +222,17 @@ export default function CartsPage() {
     );
   };
 
-  const handleCheckout = async () => {
+  const handleCheckout = () => {
     if (carts.length === 0) {
       toast.error('Your cart is empty');
       return;
     }
+    setShowCheckoutSummary(true);
+  };
 
-    toast.promise(
-      (async () => {
-        const res = await fetch('/api/carts/checkout', { method: 'POST' });
-        const json = await res.json();
-        if (!res.ok || !json.success) {
-          throw new Error(json.error || 'Failed to checkout');
-        }
-        await fetchCarts();
-        return json.data;
-      })(),
-      {
-        loading: 'Processing checkout...',
-        success: (data) => data?.message || 'Order created successfully',
-        error: (err) => (err instanceof Error ? err.message : 'Failed to checkout'),
-      },
-    );
+  const handleCheckoutComplete = () => {
+    setShowCheckoutSummary(false);
+    fetchCarts();
   };
 
   const handleExport = async () => {
@@ -340,6 +331,20 @@ export default function CartsPage() {
   };
 
   const hasActiveFilters = search || productIdFilter !== 'all';
+
+  if (showCheckoutSummary) {
+    return (
+      <ProtectedPage permission="carts:read" title="Checkout Summary" description="Review your order before payment">
+        <div className="w-full px-4 py-6 space-y-4">
+          <CheckoutSummary
+            carts={carts}
+            onBack={() => setShowCheckoutSummary(false)}
+            onComplete={handleCheckoutComplete}
+          />
+        </div>
+      </ProtectedPage>
+    );
+  }
 
   return (
     <ProtectedPage permission="carts:read" title="Carts" description="Manage user carts">

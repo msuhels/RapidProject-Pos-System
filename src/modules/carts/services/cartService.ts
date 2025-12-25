@@ -76,12 +76,16 @@ export async function createCart(params: {
 }): Promise<Cart> {
   const { data, tenantId, userId } = params;
 
-  // Fetch product details including quantity
+  // Fetch product details including quantity, discount, and tax
   const productResult = await db
     .select({
       name: products.name,
       price: products.price,
       quantity: products.quantity,
+      discountType: products.discountType,
+      discountValue: products.discountValue,
+      taxRate: products.taxRate,
+      sellingPrice: products.sellingPrice,
     })
     .from(products)
     .where(eq(products.id, data.productId))
@@ -166,12 +170,16 @@ export async function updateCart(params: {
   const finalProductId = data.productId ?? existing.productId;
   const finalQuantity = data.quantity ?? existing.quantity;
 
-  // Fetch product details including quantity
+  // Fetch product details including quantity, discount, and tax
   const productResult = await db
     .select({
       name: products.name,
       price: products.price,
       quantity: products.quantity,
+      discountType: products.discountType,
+      discountValue: products.discountValue,
+      taxRate: products.taxRate,
+      sellingPrice: products.sellingPrice,
     })
     .from(products)
     .where(eq(products.id, finalProductId))
