@@ -169,6 +169,20 @@
       "when": 1766653846394,
       "tag": "0023_needy_may_parker",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1766662265172,
+      "tag": "0024_illegal_tigra",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1766669985375,
+      "tag": "0025_foamy_thunderbird",
+      "breakpoints": true
     }
   ]
 }
