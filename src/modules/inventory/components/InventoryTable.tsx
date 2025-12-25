@@ -30,12 +30,17 @@ const STANDARD_FIELDS = [
     code: 'status',
     label: 'Status',
     render: (p: Product) => {
-      const statusMap: Record<string, string> = {
-        in_stock: 'In Stock',
-        low_stock: 'Low Stock',
-        out_of_stock: 'Out of Stock',
+      const statusMap: Record<string, { label: string; className: string }> = {
+        in_stock: { label: 'In Stock', className: 'bg-green-100 text-green-800' },
+        low_stock: { label: 'Low Stock', className: 'bg-red-100 text-red-800' },
+        out_of_stock: { label: 'Out of Stock', className: 'bg-gray-100 text-gray-800' },
       };
-      return statusMap[p.status] || p.status;
+      const status = statusMap[p.status] || { label: p.status, className: 'bg-gray-100 text-gray-800' };
+      return (
+        <span className={`px-2 py-1 rounded-full text-xs font-medium ${status.className}`}>
+          {status.label}
+        </span>
+      );
     },
   },
   { code: 'price', label: 'Price', render: (p: Product) => p.price },
@@ -79,23 +84,33 @@ export function InventoryTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {inventory.map((item) => (
-            <TableRow key={item.id}>
-              {visibleFields.map((field) => (
-                <TableCell key={field.code}>{field.render(item)}</TableCell>
-              ))}
-              {showActions && (
-                <TableCell className="text-right">
-                  <TableActions
-                    item={item}
-                    onEdit={onEdit}
-                    onDelete={onDelete}
-                    onDuplicate={onDuplicate}
-                  />
-                </TableCell>
-              )}
-            </TableRow>
-          ))}
+          {inventory.map((item) => {
+            const isLowStock = item.status === 'low_stock';
+            return (
+              <TableRow
+                key={item.id}
+                className={
+                  isLowStock
+                    ? 'bg-red-50 border-l-4 border-l-red-500'
+                    : ''
+                }
+              >
+                {visibleFields.map((field) => (
+                  <TableCell key={field.code}>{field.render(item)}</TableCell>
+                ))}
+                {showActions && (
+                  <TableCell className="text-right">
+                    <TableActions
+                      item={item}
+                      onEdit={onEdit}
+                      onDelete={onDelete}
+                      onDuplicate={onDuplicate}
+                    />
+                  </TableCell>
+                )}
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </div>
