@@ -21,7 +21,13 @@
       { "method": "DELETE", "path": "/:id", "handler": "delete", "requiresAuth": true },
       { "method": "POST", "path": "/:id/duplicate", "handler": "duplicate", "requiresAuth": true },
       { "method": "GET", "path": "/export", "handler": "export", "requiresAuth": true },
-      { "method": "POST", "path": "/import", "handler": "import", "requiresAuth": true }
+      { "method": "POST", "path": "/import", "handler": "import", "requiresAuth": true },
+      { "method": "GET", "path": "/stock-movements", "handler": "stockMovements", "requiresAuth": true },
+      { "method": "GET", "path": "/stock-adjustments", "handler": "stockAdjustments/list", "requiresAuth": true },
+      { "method": "POST", "path": "/stock-adjustments", "handler": "stockAdjustments/create", "requiresAuth": true },
+      { "method": "GET", "path": "/stock-adjustments/:id", "handler": "stockAdjustments/getById", "requiresAuth": true },
+      { "method": "PATCH", "path": "/stock-adjustments/:id", "handler": "stockAdjustments/update", "requiresAuth": true },
+      { "method": "DELETE", "path": "/stock-adjustments/:id", "handler": "stockAdjustments/delete", "requiresAuth": true }
     ]
   },
   "navigation": {

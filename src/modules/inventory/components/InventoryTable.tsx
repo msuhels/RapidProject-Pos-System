@@ -8,8 +8,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/core/components/ui/table';
+import { Button } from '@/core/components/ui/button';
 import { TableActions } from '@/core/components/common/TableActions';
 import { useFieldPermissions } from '@/core/hooks/useFieldPermissions';
+import { Package } from 'lucide-react';
 import type { Product } from '../types';
 
 interface InventoryTableProps {
@@ -18,6 +20,7 @@ interface InventoryTableProps {
   onEdit?: (product: Product) => void;
   onDelete?: (product: Product) => void;
   onDuplicate?: (product: Product) => void;
+  onAdjustStock?: (product: Product) => void;
   showActions?: boolean;
 }
 
@@ -52,6 +55,7 @@ export function InventoryTable({
   onEdit,
   onDelete,
   onDuplicate,
+  onAdjustStock,
   showActions = true,
 }: InventoryTableProps) {
   const { isFieldVisible, loading: loadingPerms } = useFieldPermissions('inventory');
@@ -84,33 +88,37 @@ export function InventoryTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {inventory.map((item) => {
-            const isLowStock = item.status === 'low_stock';
-            return (
-              <TableRow
-                key={item.id}
-                className={
-                  isLowStock
-                    ? 'border-l-4 border-l-red-500'
-                    : ''
-                }
-              >
-                {visibleFields.map((field) => (
-                  <TableCell key={field.code}>{field.render(item)}</TableCell>
-                ))}
-                {showActions && (
-                  <TableCell className="text-right">
+          {inventory.map((item) => (
+            <TableRow key={item.id}>
+              {visibleFields.map((field) => (
+                <TableCell key={field.code}>{field.render(item)}</TableCell>
+              ))}
+              {showActions && (
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    {onAdjustStock && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onAdjustStock(item)}
+                        title="Adjust Stock"
+                        aria-label="Adjust Stock"
+                        className="hover:bg-primary/10"
+                      >
+                        <Package className="h-4 w-4 text-primary" />
+                      </Button>
+                    )}
                     <TableActions
                       item={item}
                       onEdit={onEdit}
                       onDelete={onDelete}
                       onDuplicate={onDuplicate}
                     />
-                  </TableCell>
-                )}
-              </TableRow>
-            );
-          })}
+                  </div>
+                </TableCell>
+              )}
+            </TableRow>
+          ))}
         </TableBody>
       </Table>
     </div>

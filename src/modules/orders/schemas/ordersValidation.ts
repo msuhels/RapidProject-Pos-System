@@ -11,6 +11,8 @@ export const createOrderSchema = z.object({
   orderDate: z.string().optional(),
   products: z.array(orderProductSchema).min(1, 'At least one product is required'),
   labelIds: z.array(z.string().uuid()).optional().default([]),
+  discountAmount: z.number().min(0).optional(),
+  discountType: z.enum(['percentage', 'fixed']).optional(),
 });
 
 export const updateOrderSchema = z.object({
@@ -18,6 +20,8 @@ export const updateOrderSchema = z.object({
   orderDate: z.string().optional(),
   products: z.array(orderProductSchema).min(1, 'At least one product is required').optional(),
   labelIds: z.array(z.string().uuid()).optional(),
+  discountAmount: z.number().min(0).optional(),
+  discountType: z.enum(['percentage', 'fixed']).optional(),
 });
 
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
