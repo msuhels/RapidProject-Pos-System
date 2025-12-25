@@ -18,6 +18,7 @@ export interface Product {
   createdBy: string | null;
   updatedBy: string | null;
   deletedAt: string | null;
+  archivedAt: string | null;
 }
 
 export interface CreateProductInput {

@@ -7,6 +7,8 @@ export const productEndpoints = {
   update: { method: 'PATCH', path: '/api/products/:id', handler: 'update' },
   delete: { method: 'DELETE', path: '/api/products/:id', handler: 'delete' },
   duplicate: { method: 'POST', path: '/api/products/:id/duplicate', handler: 'duplicate' },
+  archive: { method: 'POST', path: '/api/products/:id/archive', handler: 'archive' },
+  unarchive: { method: 'POST', path: '/api/products/:id/unarchive', handler: 'unarchive' },
   import: { method: 'POST', path: '/api/products/import', handler: 'import' },
   export: { method: 'GET', path: '/api/products/export', handler: 'export' },
 };

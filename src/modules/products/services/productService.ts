@@ -15,6 +15,12 @@ export async function listProductsForTenant(
   // Check if current user is Super Admin by querying user_roles bridge table
   const isSuperAdmin = currentUserId ? await isUserSuperAdmin(currentUserId) : false;
 
+  // For regular users (non-Super Admin), hide archived products
+  // UNLESS showAllProducts flag is true (for inventory management - shows all products including archived)
+  if (!isSuperAdmin && !showAllProducts) {
+    conditions.push(isNull(products.archivedAt));
+  }
+
   // For regular users (non-Super Admin), hide out of stock products
   // UNLESS showAllProducts flag is true (for inventory management)
   if (!isSuperAdmin && !showAllProducts) {
@@ -72,6 +78,7 @@ export async function listProductsForTenant(
     createdBy: r.createdBy || null,
     updatedBy: r.updatedBy || null,
     deletedAt: r.deletedAt?.toISOString() || null,
+    archivedAt: r.archivedAt?.toISOString() || null,
   }));
 }
 
@@ -89,6 +96,12 @@ export async function getProductById(
     eq(products.tenantId, tenantId),
     isNull(products.deletedAt),
   ];
+
+  // For regular users (non-Super Admin), hide archived products
+  // UNLESS showAllProducts flag is true (for inventory management - shows all products including archived)
+  if (!isSuperAdmin && !showAllProducts) {
+    conditions.push(isNull(products.archivedAt));
+  }
 
   // For regular users (non-Super Admin), hide out of stock products
   // UNLESS showAllProducts flag is true (for inventory management)
@@ -121,6 +134,7 @@ export async function getProductById(
     createdBy: r.createdBy || null,
     updatedBy: r.updatedBy || null,
     deletedAt: r.deletedAt?.toISOString() || null,
+    archivedAt: r.archivedAt?.toISOString() || null,
   };
 }
 
@@ -168,6 +182,7 @@ export async function createProduct(params: {
     createdBy: result.createdBy || null,
     updatedBy: result.updatedBy || null,
     deletedAt: result.deletedAt?.toISOString() || null,
+    archivedAt: result.archivedAt?.toISOString() || null,
   };
 }
 
@@ -220,7 +235,42 @@ export async function updateProduct(params: {
     createdBy: result.createdBy || null,
     updatedBy: result.updatedBy || null,
     deletedAt: result.deletedAt?.toISOString() || null,
+    archivedAt: result.archivedAt?.toISOString() || null,
   };
+}
+
+export async function archiveProduct(id: string, tenantId: string, userId: string): Promise<boolean> {
+  // Check if product exists (use showAllProducts=true to allow archiving already archived products)
+  const existing = await getProductById(id, tenantId, userId, true);
+  if (!existing) return false;
+
+  await db
+    .update(products)
+    .set({
+      archivedAt: new Date(),
+      updatedBy: userId,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(products.id, id), eq(products.tenantId, tenantId), isNull(products.deletedAt)));
+
+  return true;
+}
+
+export async function unarchiveProduct(id: string, tenantId: string, userId: string): Promise<boolean> {
+  // Check if product exists (use showAllProducts=true to allow unarchiving)
+  const existing = await getProductById(id, tenantId, userId, true);
+  if (!existing) return false;
+
+  await db
+    .update(products)
+    .set({
+      archivedAt: null,
+      updatedBy: userId,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(products.id, id), eq(products.tenantId, tenantId), isNull(products.deletedAt)));
+
+  return true;
 }
 
 export async function deleteProduct(id: string, tenantId: string, userId: string): Promise<boolean> {
@@ -333,6 +383,7 @@ export async function decreaseProductQuantity(
     createdBy: result.createdBy || null,
     updatedBy: result.updatedBy || null,
     deletedAt: result.deletedAt?.toISOString() || null,
+    archivedAt: result.archivedAt?.toISOString() || null,
   };
 }
 
@@ -344,7 +395,7 @@ export async function increaseProductQuantity(
   reason?: string,
   referenceId?: string,
 ): Promise<Product | null> {
-  const product = await getProductById(productId, tenantId);
+  const product = await getProductById(productId, tenantId, userId, true);
   if (!product) {
     throw new Error('Product not found');
   }
@@ -398,6 +449,7 @@ export async function increaseProductQuantity(
     createdBy: result.createdBy || null,
     updatedBy: result.updatedBy || null,
     deletedAt: result.deletedAt?.toISOString() || null,
+    archivedAt: result.archivedAt?.toISOString() || null,
   };
 }
 
