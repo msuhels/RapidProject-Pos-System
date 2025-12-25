@@ -7,11 +7,14 @@ export interface Product {
   sellingPrice: string | null;
   taxRate: string | null;
   quantity: string;
+  minimumStockQuantity: string | null;
   image: string | null;
   category: string | null;
   sku: string | null;
   location: string | null;
   status: string;
+  discountType: 'percentage' | 'amount' | null;
+  discountValue: string | null;
   labelIds: string[];
   createdAt: string;
   updatedAt: string;
@@ -27,7 +30,10 @@ export interface CreateProductInput {
   costPrice?: string;
   sellingPrice?: string;
   taxRate?: string;
+  discountType?: 'percentage' | 'amount';
+  discountValue?: string;
   quantity: string;
+  minimumStockQuantity?: string;
   image?: string;
   category?: string;
   sku?: string;
@@ -42,7 +48,10 @@ export interface UpdateProductInput {
   costPrice?: string;
   sellingPrice?: string;
   taxRate?: string;
+  discountType?: 'percentage' | 'amount';
+  discountValue?: string;
   quantity?: string;
+  minimumStockQuantity?: string;
   image?: string;
   category?: string;
   sku?: string;

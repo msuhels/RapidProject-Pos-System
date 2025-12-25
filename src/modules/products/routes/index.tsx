@@ -24,12 +24,15 @@ const defaultForm: CreateProductInput = {
   name: '',
   price: '',
   quantity: '',
+  minimumStockQuantity: '',
   image: '',
   category: '',
   sku: '',
   location: '',
   status: 'in_stock',
   labelIds: [],
+  discountType: 'amount',
+  discountValue: '',
 };
 
 export default function ProductsPage() {
@@ -118,7 +121,13 @@ export default function ProductsPage() {
     setForm({
       name: product.name,
       price: product.price,
+      costPrice: product.costPrice || '',
+      sellingPrice: product.sellingPrice || '',
+      taxRate: product.taxRate || '',
+      discountType: product.discountType || 'amount',
+      discountValue: product.discountValue || '',
       quantity: product.quantity,
+      minimumStockQuantity: product.minimumStockQuantity || '',
       image: product.image || '',
       category: product.category || '',
       sku: product.sku || '',

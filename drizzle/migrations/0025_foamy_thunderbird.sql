@@ -1,0 +1,1 @@
+ALTER TABLE "products" ADD COLUMN "minimum_stock_quantity" varchar(50);
