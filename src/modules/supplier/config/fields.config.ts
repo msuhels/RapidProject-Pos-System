@@ -25,20 +25,12 @@ export const SUPPLIER_FIELDS: SupplierFieldDefinition[] = [
     sortOrder: 2,
   },
   {
-    name: 'Contact Person',
-    code: 'contact_person',
-    label: 'Contact Person',
-    fieldType: 'text',
-    description: 'Primary contact person name',
-    sortOrder: 3,
-  },
-  {
     name: 'Email',
     code: 'email',
     label: 'Email',
     fieldType: 'email',
     description: 'Supplier contact email address',
-    sortOrder: 4,
+    sortOrder: 3,
   },
   {
     name: 'Phone',
@@ -46,7 +38,7 @@ export const SUPPLIER_FIELDS: SupplierFieldDefinition[] = [
     label: 'Phone',
     fieldType: 'phone',
     description: 'Supplier contact phone number',
-    sortOrder: 5,
+    sortOrder: 4,
   },
   {
     name: 'Address',
@@ -54,7 +46,7 @@ export const SUPPLIER_FIELDS: SupplierFieldDefinition[] = [
     label: 'Address',
     fieldType: 'textarea',
     description: 'Supplier address details',
-    sortOrder: 6,
+    sortOrder: 5,
   },
   {
     name: 'Status',
@@ -62,7 +54,7 @@ export const SUPPLIER_FIELDS: SupplierFieldDefinition[] = [
     label: 'Status',
     fieldType: 'select',
     description: 'Current supplier status',
-    sortOrder: 7,
+    sortOrder: 6,
   },
 ];
 

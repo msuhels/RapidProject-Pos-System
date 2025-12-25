@@ -16,7 +16,6 @@ export const suppliers = pgTable(
     tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
     supplierCode: varchar('supplier_code', { length: 100 }).notNull(),
     supplierName: varchar('supplier_name', { length: 255 }).notNull(),
-    contactPerson: varchar('contact_person', { length: 255 }),
     email: varchar('email', { length: 255 }),
     phone: varchar('phone', { length: 30 }),
     address: text('address'),

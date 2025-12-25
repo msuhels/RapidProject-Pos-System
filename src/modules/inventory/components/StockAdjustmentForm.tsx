@@ -11,6 +11,7 @@ interface StockAdjustmentFormProps {
   form: CreateStockAdjustmentInput & { productName?: string };
   products: Product[];
   onChange: (form: CreateStockAdjustmentInput) => void;
+  productLocked?: boolean;
 }
 
 const REASON_OPTIONS = [
@@ -23,34 +24,50 @@ const REASON_OPTIONS = [
   { value: 'other', label: 'Other' },
 ];
 
-export function StockAdjustmentForm({ form, products, onChange }: StockAdjustmentFormProps) {
+export function StockAdjustmentForm({ form, products, onChange, productLocked = false }: StockAdjustmentFormProps) {
   const selectedProduct = products.find((p) => p.id === form.productId);
 
   return (
     <div className="space-y-4">
       <div>
         <Label htmlFor="productId">Product *</Label>
-        <Select
-          id="productId"
-          value={form.productId}
-          onChange={(e) => {
-            const product = products.find((p) => p.id === e.target.value);
-            onChange({
-              ...form,
-              productId: e.target.value,
-              productName: product?.name,
-            });
-          }}
-          options={[
-            { value: '', label: 'Select a product' },
-            ...products.map((p) => ({ value: p.id, label: `${p.name} (Qty: ${p.quantity})` })),
-          ]}
-          className="w-full"
-        />
-        {selectedProduct && (
-          <p className="text-sm text-muted-foreground mt-1">
-            Current stock: {selectedProduct.quantity}
-          </p>
+        {productLocked && selectedProduct ? (
+          <div className="w-full">
+            <Input
+              id="productId"
+              value={`${selectedProduct.name} (Qty: ${selectedProduct.quantity})`}
+              disabled
+              className="w-full bg-muted"
+            />
+            <p className="text-sm text-muted-foreground mt-1">
+              Current stock: {selectedProduct.quantity}
+            </p>
+          </div>
+        ) : (
+          <>
+            <Select
+              id="productId"
+              value={form.productId}
+              onChange={(e) => {
+                const product = products.find((p) => p.id === e.target.value);
+                onChange({
+                  ...form,
+                  productId: e.target.value,
+                  productName: product?.name,
+                });
+              }}
+              options={[
+                { value: '', label: 'Select a product' },
+                ...products.map((p) => ({ value: p.id, label: `${p.name} (Qty: ${p.quantity})` })),
+              ]}
+              className="w-full"
+            />
+            {selectedProduct && (
+              <p className="text-sm text-muted-foreground mt-1">
+                Current stock: {selectedProduct.quantity}
+              </p>
+            )}
+          </>
         )}
       </div>
 

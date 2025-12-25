@@ -5,7 +5,6 @@ export interface SupplierRecord {
   tenantId: string;
   supplierCode: string;
   supplierName: string;
-  contactPerson?: string | null;
   email?: string | null;
   phone?: string | null;
   address?: string | null;
