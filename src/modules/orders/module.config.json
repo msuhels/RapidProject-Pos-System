@@ -21,6 +21,7 @@
       { "method": "PATCH", "path": "/:id", "handler": "update", "requiresAuth": true },
       { "method": "DELETE", "path": "/:id", "handler": "delete", "requiresAuth": true },
       { "method": "POST", "path": "/:id/duplicate", "handler": "duplicate", "requiresAuth": true },
+      { "method": "POST", "path": "/:id/void", "handler": "void", "requiresAuth": true },
       { "method": "POST", "path": "/import", "handler": "import", "requiresAuth": true },
       { "method": "GET", "path": "/export", "handler": "export", "requiresAuth": true }
     ]
@@ -39,6 +40,7 @@
     "export": "orders:export",
     "import": "orders:import",
     "duplicate": "orders:duplicate",
+    "void": "orders:void",
     "manage_labels": "orders:manage_labels",
     "manage": "orders:*"
   },

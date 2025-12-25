@@ -3,6 +3,7 @@ export interface OrderProduct {
   quantity: string;
   price: string;
   productName?: string;
+  taxRate?: string;
 }
 
 export interface Order {
@@ -14,7 +15,15 @@ export interface Order {
   orderDate: string;
   products: OrderProduct[];
   totalAmount: string | null;
+  subtotalAmount: string | null;
+  taxAmount: string | null;
+  discountAmount: string | null;
+  discountType: string | null;
   labelIds: string[];
+  isVoided: boolean;
+  voidedBy: string | null;
+  voidedAt: string | null;
+  voidReason: string | null;
   createdAt: string;
   updatedAt: string;
   createdBy: string | null;
@@ -27,6 +36,8 @@ export interface CreateOrderInput {
   orderDate?: string;
   products: OrderProduct[];
   labelIds?: string[];
+  discountAmount?: number;
+  discountType?: 'percentage' | 'fixed';
 }
 
 export interface UpdateOrderInput {
@@ -34,6 +45,8 @@ export interface UpdateOrderInput {
   orderDate?: string;
   products?: OrderProduct[];
   labelIds?: string[];
+  discountAmount?: number;
+  discountType?: 'percentage' | 'fixed';
 }
 
 export interface OrderListFilters {

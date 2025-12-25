@@ -46,7 +46,15 @@ export async function listOrdersForTenant(
       orderDate: orders.orderDate,
       products: orders.products,
       totalAmount: orders.totalAmount,
+      subtotalAmount: orders.subtotalAmount,
+      taxAmount: orders.taxAmount,
+      discountAmount: orders.discountAmount,
+      discountType: orders.discountType,
       labelIds: orders.labelIds,
+      isVoided: orders.isVoided,
+      voidedBy: orders.voidedBy,
+      voidedAt: orders.voidedAt,
+      voidReason: orders.voidReason,
       createdAt: orders.createdAt,
       updatedAt: orders.updatedAt,
       createdBy: orders.createdBy,
@@ -118,12 +126,20 @@ export async function listOrdersForTenant(
       id: r.id,
       tenantId: r.tenantId,
       userId: r.userId,
-      userName: r.userName || null,
-      userEmail: r.userEmail || null,
+      userName: r.userName || undefined,
+      userEmail: r.userEmail || undefined,
       orderDate: r.orderDate.toISOString(),
       products: orderProducts,
       totalAmount: r.totalAmount || null,
+      subtotalAmount: r.subtotalAmount || null,
+      taxAmount: r.taxAmount || null,
+      discountAmount: r.discountAmount || null,
+      discountType: r.discountType || null,
       labelIds: (r.labelIds as string[]) || [],
+      isVoided: r.isVoided || false,
+      voidedBy: r.voidedBy || null,
+      voidedAt: r.voidedAt?.toISOString() || null,
+      voidReason: r.voidReason || null,
       createdAt: r.createdAt.toISOString(),
       updatedAt: r.updatedAt.toISOString(),
       createdBy: r.createdBy || null,
@@ -143,7 +159,15 @@ export async function getOrderById(id: string, tenantId: string): Promise<Order 
       orderDate: orders.orderDate,
       products: orders.products,
       totalAmount: orders.totalAmount,
+      subtotalAmount: orders.subtotalAmount,
+      taxAmount: orders.taxAmount,
+      discountAmount: orders.discountAmount,
+      discountType: orders.discountType,
       labelIds: orders.labelIds,
+      isVoided: orders.isVoided,
+      voidedBy: orders.voidedBy,
+      voidedAt: orders.voidedAt,
+      voidReason: orders.voidReason,
       createdAt: orders.createdAt,
       updatedAt: orders.updatedAt,
       createdBy: orders.createdBy,
@@ -209,12 +233,20 @@ export async function getOrderById(id: string, tenantId: string): Promise<Order 
     id: r.id,
     tenantId: r.tenantId,
     userId: r.userId,
-    userName: r.userName || null,
-    userEmail: r.userEmail || null,
+    userName: r.userName || undefined,
+    userEmail: r.userEmail || undefined,
     orderDate: r.orderDate.toISOString(),
     products: enrichedProducts,
     totalAmount: r.totalAmount || null,
+    subtotalAmount: r.subtotalAmount || null,
+    taxAmount: r.taxAmount || null,
+    discountAmount: r.discountAmount || null,
+    discountType: r.discountType || null,
     labelIds: (r.labelIds as string[]) || [],
+    isVoided: r.isVoided || false,
+    voidedBy: r.voidedBy || null,
+    voidedAt: r.voidedAt?.toISOString() || null,
+    voidReason: r.voidReason || null,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
     createdBy: r.createdBy || null,
@@ -231,7 +263,8 @@ export async function createOrder(params: {
   const { data, tenantId, userId } = params;
 
   // Validate products and calculate total amount
-  let totalAmount = 0;
+  let subtotalAmount = 0;
+  let taxAmount = 0;
   const enrichedProducts = [];
   for (const product of data.products) {
     // Verify product exists and has sufficient stock
@@ -241,6 +274,7 @@ export async function createOrder(params: {
         name: products.name,
         price: products.price,
         quantity: products.quantity,
+        taxRate: products.taxRate,
       })
       .from(products)
       .where(eq(products.id, product.productId))
@@ -260,16 +294,38 @@ export async function createOrder(params: {
       );
     }
 
-    // Calculate total
+    // Calculate subtotal for this product
     const price = parseFloat(product.price) || 0;
-    totalAmount += price * requestedQuantity;
+    const productSubtotal = price * requestedQuantity;
+    subtotalAmount += productSubtotal;
 
-    // Store product name with the product data
+    // Calculate tax for this product
+    const taxRate = parseFloat(productData.taxRate || '0') || 0;
+    const productTax = (productSubtotal * taxRate) / 100;
+    taxAmount += productTax;
+
+    // Store product name and tax rate with the product data
     enrichedProducts.push({
       ...product,
       productName: productData.name,
+      taxRate: productData.taxRate || '0',
     });
   }
+
+  // Calculate discount
+  let discountAmount = 0;
+  if (data.discountAmount && data.discountAmount > 0) {
+    if (data.discountType === 'percentage') {
+      discountAmount = (subtotalAmount * data.discountAmount) / 100;
+    } else {
+      discountAmount = data.discountAmount;
+    }
+    // Ensure discount doesn't exceed subtotal
+    discountAmount = Math.min(discountAmount, subtotalAmount);
+  }
+
+  // Calculate final total: subtotal + tax - discount
+  const totalAmount = subtotalAmount + taxAmount - discountAmount;
 
   // Create order record with enriched products (including product names)
   const orderDate = data.orderDate ? new Date(data.orderDate) : new Date();
@@ -281,6 +337,10 @@ export async function createOrder(params: {
       orderDate,
       products: enrichedProducts, // Store products with names
       totalAmount: totalAmount.toFixed(2),
+      subtotalAmount: subtotalAmount.toFixed(2),
+      taxAmount: taxAmount.toFixed(2),
+      discountAmount: discountAmount > 0 ? discountAmount.toFixed(2) : null,
+      discountType: data.discountType || null,
       labelIds: data.labelIds || [],
       createdBy: userId,
       updatedBy: userId,
@@ -290,7 +350,7 @@ export async function createOrder(params: {
   // Decrease product quantities
   for (const product of data.products) {
     const requestedQuantity = parseInt(product.quantity) || 0;
-    await decreaseProductQuantity(product.productId, tenantId, requestedQuantity, userId);
+    await decreaseProductQuantity(product.productId, tenantId, requestedQuantity, userId, 'sale', orderResult.id);
   }
 
   // Update customer's totalPurchases
@@ -347,11 +407,19 @@ export async function createOrder(params: {
   return {
     ...orderResult,
     labelIds: (orderResult.labelIds as string[]) || [],
-    products: orderProducts.map((p) => ({
+    products: enrichedProducts.map((p) => ({
       ...p,
       productName: p.productName || 'Unknown Product',
     })),
     totalAmount: orderResult.totalAmount || null,
+    subtotalAmount: orderResult.subtotalAmount || null,
+    taxAmount: orderResult.taxAmount || null,
+    discountAmount: orderResult.discountAmount || null,
+    discountType: orderResult.discountType || null,
+    isVoided: orderResult.isVoided || false,
+    voidedBy: orderResult.voidedBy || null,
+    voidedAt: orderResult.voidedAt?.toISOString() || null,
+    voidReason: orderResult.voidReason || null,
     orderDate: orderResult.orderDate.toISOString(),
     createdAt: orderResult.createdAt.toISOString(),
     updatedAt: orderResult.updatedAt.toISOString(),
@@ -372,20 +440,56 @@ export async function updateOrder(params: {
   const existing = await getOrderById(id, tenantId);
   if (!existing) return null;
 
+  // Check if order is voided
+  if (existing.isVoided) {
+    throw new Error('Cannot update a voided order');
+  }
+
   let finalProducts = data.products ?? existing.products;
   let finalOrderDate = data.orderDate ? new Date(data.orderDate) : new Date(existing.orderDate);
-  let totalAmount = 0;
+  let subtotalAmount = 0;
+  let taxAmount = 0;
 
-  // If products changed, recalculate total
+  // If products changed, recalculate totals
   if (data.products) {
     for (const product of finalProducts) {
+      // Get product tax rate
+      const productResult = await db
+        .select({
+          taxRate: products.taxRate,
+        })
+        .from(products)
+        .where(eq(products.id, product.productId))
+        .limit(1);
+
+      const taxRate = productResult.length > 0 ? parseFloat(productResult[0].taxRate || '0') || 0 : 0;
       const price = parseFloat(product.price) || 0;
       const quantity = parseInt(product.quantity) || 0;
-      totalAmount += price * quantity;
+      const productSubtotal = price * quantity;
+      subtotalAmount += productSubtotal;
+      taxAmount += (productSubtotal * taxRate) / 100;
     }
   } else {
-    totalAmount = parseFloat(existing.totalAmount || '0') || 0;
+    subtotalAmount = parseFloat(existing.subtotalAmount || '0') || 0;
+    taxAmount = parseFloat(existing.taxAmount || '0') || 0;
   }
+
+  // Calculate discount
+  let discountAmount = 0;
+  const finalDiscountAmount = data.discountAmount !== undefined ? data.discountAmount : (existing.discountAmount ? parseFloat(existing.discountAmount) : 0);
+  const finalDiscountType = data.discountType !== undefined ? data.discountType : (existing.discountType as 'percentage' | 'fixed' | undefined);
+
+  if (finalDiscountAmount > 0 && finalDiscountType) {
+    if (finalDiscountType === 'percentage') {
+      discountAmount = (subtotalAmount * finalDiscountAmount) / 100;
+    } else {
+      discountAmount = finalDiscountAmount;
+    }
+    discountAmount = Math.min(discountAmount, subtotalAmount);
+  }
+
+  // Calculate final total: subtotal + tax - discount
+  const totalAmount = subtotalAmount + taxAmount - discountAmount;
 
   const [orderResult] = await db
     .update(orders)
@@ -394,6 +498,10 @@ export async function updateOrder(params: {
       orderDate: finalOrderDate,
       products: finalProducts,
       totalAmount: totalAmount.toFixed(2),
+      subtotalAmount: subtotalAmount.toFixed(2),
+      taxAmount: taxAmount.toFixed(2),
+      discountAmount: discountAmount > 0 ? discountAmount.toFixed(2) : null,
+      discountType: finalDiscountType || null,
       labelIds: data.labelIds ?? existing.labelIds,
       updatedBy: userId,
       updatedAt: new Date(),
@@ -432,6 +540,14 @@ export async function updateOrder(params: {
     labelIds: (orderResult.labelIds as string[]) || [],
     products: (orderResult.products as any[]) || [],
     totalAmount: orderResult.totalAmount || null,
+    subtotalAmount: orderResult.subtotalAmount || null,
+    taxAmount: orderResult.taxAmount || null,
+    discountAmount: orderResult.discountAmount || null,
+    discountType: orderResult.discountType || null,
+    isVoided: orderResult.isVoided || false,
+    voidedBy: orderResult.voidedBy || null,
+    voidedAt: orderResult.voidedAt?.toISOString() || null,
+    voidReason: orderResult.voidReason || null,
     orderDate: orderResult.orderDate.toISOString(),
     createdAt: orderResult.createdAt.toISOString(),
     updatedAt: orderResult.updatedAt.toISOString(),
@@ -501,4 +617,91 @@ export async function duplicateOrder(
     userId,
   });
 }
+
+export async function voidOrder(
+  id: string,
+  tenantId: string,
+  userId: string,
+  reason?: string,
+): Promise<Order | null> {
+  const existing = await getOrderById(id, tenantId);
+  if (!existing) {
+    throw new Error('Order not found');
+  }
+
+  if (existing.isVoided) {
+    throw new Error('Order is already voided');
+  }
+
+  // Check if order has payments
+  try {
+    const { listPayments } = await import('../../payment_management/services/paymentService');
+    const payments = await listPayments(tenantId, { saleReference: id });
+    if (payments.length > 0) {
+      const hasNonReversedPayments = payments.some((p) => !p.isReversed && p.paymentStatus !== 'refunded');
+      if (hasNonReversedPayments) {
+        throw new Error('Cannot void order with existing payments. Please reverse payments first.');
+      }
+    }
+  } catch (error) {
+    // If payment check fails, still allow voiding (payment module might not be available)
+    console.warn('Could not check payments:', error);
+  }
+
+  // Restore stock for all products in the order
+  const { increaseProductQuantity } = await import('../../products/services/productService');
+  for (const product of existing.products) {
+    const quantity = parseInt(product.quantity) || 0;
+    if (quantity > 0) {
+      try {
+        await increaseProductQuantity(product.productId, tenantId, quantity, userId, 'order_void', id);
+      } catch (error) {
+        console.error(`Failed to restore stock for product ${product.productId}:`, error);
+        // Continue with other products even if one fails
+      }
+    }
+  }
+
+  // Mark order as voided
+  const [orderResult] = await db
+    .update(orders)
+    .set({
+      isVoided: true,
+      voidedBy: userId,
+      voidedAt: new Date(),
+      voidReason: reason || null,
+      updatedBy: userId,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(orders.id, id), eq(orders.tenantId, tenantId)))
+    .returning();
+
+  // Update customer's totalPurchases
+  try {
+    const { getCustomerByUserId, updateCustomer } = await import('../../customer_management/services/customerService');
+    const customer = await getCustomerByUserId(existing.userId, tenantId);
+    if (customer) {
+      const allOrders = await listOrdersForTenant(tenantId, { userId: existing.userId });
+      const newTotalPurchases = allOrders
+        .filter((order) => !order.isVoided)
+        .reduce((sum, order) => {
+          return sum + (parseFloat(order.totalAmount || '0') || 0);
+        }, 0);
+
+      await updateCustomer({
+        id: customer.id,
+        tenantId,
+        userId,
+        data: {
+          totalPurchases: newTotalPurchases,
+        },
+      });
+    }
+  } catch (error) {
+    console.error('Failed to update customer totalPurchases:', error);
+  }
+
+  return getOrderById(id, tenantId);
+}
+
 

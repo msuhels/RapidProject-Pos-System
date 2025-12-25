@@ -36,7 +36,7 @@ export async function listPayments(
   tenantId: string,
   filters: PaymentListFilters = {},
 ): Promise<Payment[]> {
-  const { search, paymentStatus, paymentMethodId, dateFrom, dateTo } = filters;
+  const { search, paymentStatus, paymentMethodId, saleReference, dateFrom, dateTo } = filters;
 
   // Build conditions array
   const conditions = [eq(payments.tenantId, tenantId)];
@@ -49,6 +49,11 @@ export async function listPayments(
   // Filter by payment method
   if (paymentMethodId) {
     conditions.push(eq(payments.paymentMethodId, paymentMethodId));
+  }
+
+  // Filter by sale reference
+  if (saleReference) {
+    conditions.push(eq(payments.saleReference, saleReference));
   }
 
   // Filter by date range

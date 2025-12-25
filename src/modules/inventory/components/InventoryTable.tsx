@@ -8,8 +8,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/core/components/ui/table';
+import { Button } from '@/core/components/ui/button';
 import { TableActions } from '@/core/components/common/TableActions';
 import { useFieldPermissions } from '@/core/hooks/useFieldPermissions';
+import { Package } from 'lucide-react';
 import type { Product } from '../types';
 
 interface InventoryTableProps {
@@ -18,6 +20,7 @@ interface InventoryTableProps {
   onEdit?: (product: Product) => void;
   onDelete?: (product: Product) => void;
   onDuplicate?: (product: Product) => void;
+  onAdjustStock?: (product: Product) => void;
   showActions?: boolean;
 }
 
@@ -47,6 +50,7 @@ export function InventoryTable({
   onEdit,
   onDelete,
   onDuplicate,
+  onAdjustStock,
   showActions = true,
 }: InventoryTableProps) {
   const { isFieldVisible, loading: loadingPerms } = useFieldPermissions('inventory');
@@ -86,12 +90,26 @@ export function InventoryTable({
               ))}
               {showActions && (
                 <TableCell className="text-right">
-                  <TableActions
-                    item={item}
-                    onEdit={onEdit}
-                    onDelete={onDelete}
-                    onDuplicate={onDuplicate}
-                  />
+                  <div className="flex items-center justify-end gap-1">
+                    {onAdjustStock && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onAdjustStock(item)}
+                        title="Adjust Stock"
+                        aria-label="Adjust Stock"
+                        className="hover:bg-primary/10"
+                      >
+                        <Package className="h-4 w-4 text-primary" />
+                      </Button>
+                    )}
+                    <TableActions
+                      item={item}
+                      onEdit={onEdit}
+                      onDelete={onDelete}
+                      onDuplicate={onDuplicate}
+                    />
+                  </div>
                 </TableCell>
               )}
             </TableRow>

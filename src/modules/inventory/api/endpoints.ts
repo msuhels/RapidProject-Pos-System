@@ -8,6 +8,12 @@ export const inventoryEndpoints = {
   duplicate: { method: 'POST', path: '/api/inventory/:id/duplicate', handler: 'duplicate' },
   import: { method: 'POST', path: '/api/inventory/import', handler: 'import' },
   export: { method: 'GET', path: '/api/inventory/export', handler: 'export' },
+  stockMovements: { method: 'GET', path: '/api/inventory/stock-movements', handler: 'stockMovements' },
+  stockAdjustmentsList: { method: 'GET', path: '/api/inventory/stock-adjustments', handler: 'stockAdjustments/list' },
+  stockAdjustmentsCreate: { method: 'POST', path: '/api/inventory/stock-adjustments', handler: 'stockAdjustments/create' },
+  stockAdjustmentsGetById: { method: 'GET', path: '/api/inventory/stock-adjustments/:id', handler: 'stockAdjustments/getById' },
+  stockAdjustmentsUpdate: { method: 'PATCH', path: '/api/inventory/stock-adjustments/:id', handler: 'stockAdjustments/update' },
+  stockAdjustmentsDelete: { method: 'DELETE', path: '/api/inventory/stock-adjustments/:id', handler: 'stockAdjustments/delete' },
 };
 
 

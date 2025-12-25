@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState, useRef } from 'react';
-import { Plus, RefreshCcw, Download, Upload, Tag, X } from 'lucide-react';
+import { Plus, RefreshCcw, Download, Upload, Tag, X, Package, History } from 'lucide-react';
 import { toast } from 'sonner';
 import { ProtectedPage } from '@/core/components/common/ProtectedPage';
 import { Button } from '@/core/components/ui/button';
@@ -13,9 +13,12 @@ import { LoadingSpinner } from '@/core/components/common/LoadingSpinner';
 import { usePermissions } from '@/core/hooks/usePermissions';
 import { useDebounce } from '@/core/hooks/useDebounce';
 import type { Product } from '../types';
+import type { StockAdjustment, CreateStockAdjustmentInput } from '../types';
 import { InventoryForm } from '../components/InventoryForm';
 import { InventoryTable } from '../components/InventoryTable';
 import { InventoryLabelsDialog } from '../components/InventoryLabelsDialog';
+import { StockAdjustmentTable } from '../components/StockAdjustmentTable';
+import { StockAdjustmentForm } from '../components/StockAdjustmentForm';
 import { useInventoryLabels } from '../hooks/useInventoryLabels';
 
 const defaultForm = {
@@ -33,9 +36,21 @@ export default function InventoryPage() {
   const [location, setLocation] = useState<string>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [labelsDialogOpen, setLabelsDialogOpen] = useState(false);
+  const [adjustmentsDialogOpen, setAdjustmentsDialogOpen] = useState(false);
+  const [adjustmentFormDialogOpen, setAdjustmentFormDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(defaultForm);
   const [saving, setSaving] = useState(false);
+  const [adjustments, setAdjustments] = useState<StockAdjustment[]>([]);
+  const [adjustmentsLoading, setAdjustmentsLoading] = useState(false);
+  const [adjustmentForm, setAdjustmentForm] = useState<CreateStockAdjustmentInput & { productName?: string }>({
+    productId: '',
+    adjustmentType: 'increase',
+    quantity: 0,
+    reason: '',
+    notes: '',
+  });
+  const [savingAdjustment, setSavingAdjustment] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { hasPermission } = usePermissions();
@@ -48,6 +63,8 @@ export default function InventoryPage() {
   const canImport = hasPermission('inventory:import') || hasPermission('inventory:*');
   const canDuplicate = hasPermission('inventory:duplicate') || hasPermission('inventory:*');
   const canManageLabels = hasPermission('inventory:manage_labels') || hasPermission('inventory:*');
+  const canCreateAdjustment = hasPermission('inventory:update') || hasPermission('inventory:*');
+  const canViewAdjustments = hasPermission('inventory:read') || hasPermission('inventory:*');
 
   const showActions = canUpdate || canDelete || canDuplicate;
 
@@ -303,6 +320,138 @@ export default function InventoryPage() {
 
   const hasActiveFilters = search || status !== 'all' || location !== 'all';
 
+  const fetchAdjustments = useCallback(async () => {
+    if (!canViewAdjustments) return;
+    setAdjustmentsLoading(true);
+    try {
+      const res = await fetch('/api/inventory/stock-adjustments');
+      const json = await res.json();
+      if (res.ok && json.success) {
+        setAdjustments(json.data ?? []);
+      } else {
+        toast.error(json.error || 'Failed to load stock adjustments');
+      }
+    } catch (error) {
+      console.error('Adjustments fetch error:', error);
+      toast.error('Failed to load stock adjustments');
+    } finally {
+      setAdjustmentsLoading(false);
+    }
+  }, [canViewAdjustments]);
+
+  const openAdjustmentForm = (product?: Product) => {
+    if (!canCreateAdjustment) {
+      toast.error('You do not have permission to create stock adjustments');
+      return;
+    }
+    setAdjustmentForm({
+      productId: product?.id || '',
+      adjustmentType: 'increase',
+      quantity: 0,
+      reason: '',
+      notes: '',
+      productName: product?.name,
+    });
+    setAdjustmentFormDialogOpen(true);
+  };
+
+  const saveAdjustment = async () => {
+    if (!canCreateAdjustment) {
+      toast.error('You do not have permission to create stock adjustments');
+      return;
+    }
+
+    if (!adjustmentForm.productId) {
+      toast.error('Please select a product');
+      return;
+    }
+    if (!adjustmentForm.adjustmentType || (adjustmentForm.adjustmentType !== 'increase' && adjustmentForm.adjustmentType !== 'decrease')) {
+      toast.error('Please select an adjustment type');
+      return;
+    }
+    if (!adjustmentForm.quantity || adjustmentForm.quantity <= 0) {
+      toast.error('Quantity must be greater than 0');
+      return;
+    }
+    if (!adjustmentForm.reason) {
+      toast.error('Please select a reason');
+      return;
+    }
+
+    setSavingAdjustment(true);
+    try {
+      // Ensure adjustmentType is set and valid
+      const payload: CreateStockAdjustmentInput = {
+        productId: adjustmentForm.productId,
+        adjustmentType: adjustmentForm.adjustmentType || 'increase',
+        quantity: adjustmentForm.quantity,
+        reason: adjustmentForm.reason,
+        notes: adjustmentForm.notes,
+      };
+
+      const res = await fetch('/api/inventory/stock-adjustments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'Failed to create stock adjustment');
+      }
+
+      setAdjustmentFormDialogOpen(false);
+      setAdjustmentForm({
+        productId: '',
+        adjustmentType: 'increase',
+        quantity: 0,
+        reason: '',
+        notes: '',
+      });
+      fetchAdjustments();
+      fetchInventory();
+      toast.success('Stock adjustment created successfully');
+    } catch (error) {
+      console.error('Adjustment save error:', error);
+      const message = error instanceof Error ? error.message : 'Failed to create stock adjustment';
+      toast.error(message);
+    } finally {
+      setSavingAdjustment(false);
+    }
+  };
+
+  const deleteAdjustment = async (adjustment: StockAdjustment) => {
+    if (!hasPermission('inventory:delete') && !hasPermission('inventory:*')) {
+      toast.error('You do not have permission to delete adjustments');
+      return;
+    }
+
+    toast.promise(
+      (async () => {
+        const res = await fetch(`/api/inventory/stock-adjustments/${adjustment.id}`, {
+          method: 'DELETE',
+        });
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+          throw new Error(json.error || 'Failed to delete adjustment');
+        }
+        await fetchAdjustments();
+        await fetchInventory();
+      })(),
+      {
+        loading: 'Deleting adjustment...',
+        success: 'Adjustment deleted successfully',
+        error: (err) => (err instanceof Error ? err.message : 'Failed to delete adjustment'),
+      },
+    );
+  };
+
+  useEffect(() => {
+    if (adjustmentsDialogOpen) {
+      fetchAdjustments();
+    }
+  }, [adjustmentsDialogOpen, fetchAdjustments]);
+
   return (
     <ProtectedPage permission="inventory:read" title="Inventory" description="Manage inventory for your products">
       <div className="w-full px-4 py-6 space-y-4">
@@ -326,6 +475,12 @@ export default function InventoryPage() {
                 <Button variant="outline" size="sm" onClick={() => setLabelsDialogOpen(true)}>
                   <Tag className="h-4 w-4 mr-2" />
                   Manage Labels
+                </Button>
+              )}
+              {canViewAdjustments && (
+                <Button variant="outline" size="sm" onClick={() => setAdjustmentsDialogOpen(true)}>
+                  <History className="h-4 w-4 mr-2" />
+                  Stock Adjustments
                 </Button>
               )}
               <Button variant="ghost" size="sm" onClick={fetchInventory}>
@@ -394,6 +549,7 @@ export default function InventoryPage() {
                 onEdit={canUpdate ? openEdit : undefined}
                 onDelete={canDelete ? deleteInventory : undefined}
                 onDuplicate={canDuplicate ? duplicateInventory : undefined}
+                onAdjustStock={canCreateAdjustment ? openAdjustmentForm : undefined}
                 showActions={showActions}
               />
             )}
@@ -420,6 +576,57 @@ export default function InventoryPage() {
         </Dialog>
 
         <InventoryLabelsDialog open={labelsDialogOpen} onOpenChange={setLabelsDialogOpen} />
+
+        <Dialog open={adjustmentsDialogOpen} onOpenChange={setAdjustmentsDialogOpen}>
+          <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center justify-between">
+                <span>Stock Adjustments</span>
+                {canCreateAdjustment && (
+                  <Button onClick={openAdjustmentForm} size="sm">
+                    <Plus className="h-4 w-4 mr-2" />
+                    New Adjustment
+                  </Button>
+                )}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="px-6 py-4">
+              <StockAdjustmentTable
+                adjustments={adjustments}
+                loading={adjustmentsLoading}
+                onDelete={hasPermission('inventory:delete') || hasPermission('inventory:*') ? deleteAdjustment : undefined}
+                showActions={hasPermission('inventory:delete') || hasPermission('inventory:*')}
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={adjustmentFormDialogOpen} onOpenChange={setAdjustmentFormDialogOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Create Stock Adjustment</DialogTitle>
+            </DialogHeader>
+            <div className="px-6 py-4">
+              <StockAdjustmentForm
+                form={adjustmentForm}
+                products={inventory}
+                onChange={setAdjustmentForm}
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setAdjustmentFormDialogOpen(false)}
+                disabled={savingAdjustment}
+              >
+                Cancel
+              </Button>
+              <Button onClick={saveAdjustment} disabled={savingAdjustment}>
+                {savingAdjustment ? 'Creating...' : 'Create Adjustment'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <input
           ref={fileInputRef}
