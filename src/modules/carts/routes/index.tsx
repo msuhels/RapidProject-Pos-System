@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState, useRef } from 'react';
-import { Plus, RefreshCcw, Download, Upload, Tag, X } from 'lucide-react';
+import { Plus, RefreshCcw, Download, Upload, Tag, X, ShoppingBag } from 'lucide-react';
 import { toast } from 'sonner';
 import { ProtectedPage } from '@/core/components/common/ProtectedPage';
 import { Button } from '@/core/components/ui/button';
@@ -51,6 +51,7 @@ export default function CartsPage() {
   const canImport = hasPermission('carts:import') || hasPermission('carts:*');
   const canDuplicate = hasPermission('carts:duplicate') || hasPermission('carts:*');
   const canManageLabels = hasPermission('carts:manage_labels') || hasPermission('carts:*');
+  // Checkout button will be visible when there are items - permission check happens on backend
 
   const showActions = canUpdate || canDelete || canDuplicate;
 
@@ -219,6 +220,30 @@ export default function CartsPage() {
     );
   };
 
+  const handleCheckout = async () => {
+    if (carts.length === 0) {
+      toast.error('Your cart is empty');
+      return;
+    }
+
+    toast.promise(
+      (async () => {
+        const res = await fetch('/api/carts/checkout', { method: 'POST' });
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+          throw new Error(json.error || 'Failed to checkout');
+        }
+        await fetchCarts();
+        return json.data;
+      })(),
+      {
+        loading: 'Processing checkout...',
+        success: (data) => data?.message || 'Order created successfully',
+        error: (err) => (err instanceof Error ? err.message : 'Failed to checkout'),
+      },
+    );
+  };
+
   const handleExport = async () => {
     if (!canExport) {
       toast.error('You do not have permission to export carts');
@@ -357,6 +382,12 @@ export default function CartsPage() {
                   </Button>
                 </>
               )}
+              {carts.length > 0 && (
+                <Button size="sm" onClick={handleCheckout} className="bg-green-600 hover:bg-green-700 text-white">
+                  <ShoppingBag className="h-4 w-4 mr-2" />
+                  Checkout
+                </Button>
+              )}
               {canCreate && (
                 <Button size="sm" onClick={openCreate}>
                   <Plus className="h-4 w-4 mr-2" />
@@ -403,13 +434,39 @@ export default function CartsPage() {
                 <LoadingSpinner />
               </div>
             ) : (
-              <CartTable
-                carts={carts}
-                onEdit={canUpdate ? openEdit : undefined}
-                onDelete={canDelete ? deleteCart : undefined}
-                onDuplicate={canDuplicate ? duplicateCart : undefined}
-                showActions={showActions}
-              />
+              <>
+                {carts.length > 0 && (
+                  <div className="flex items-center justify-between p-4 bg-muted rounded-lg border-2 border-green-200">
+                    <div>
+                      <p className="text-sm text-muted-foreground">
+                        {carts.length} item(s) in cart
+                      </p>
+                      <p className="text-lg font-semibold">
+                        Total: ${carts.reduce((sum, cart) => {
+                          const price = parseFloat(cart.productPrice || '0');
+                          const qty = parseFloat(cart.quantity || '0');
+                          return sum + price * qty;
+                        }, 0).toFixed(2)}
+                      </p>
+                    </div>
+                    <Button
+                      size="lg"
+                      onClick={handleCheckout}
+                      className="bg-green-600 hover:bg-green-700 text-white font-semibold px-6"
+                    >
+                      <ShoppingBag className="h-5 w-5 mr-2" />
+                      Checkout Now
+                    </Button>
+                  </div>
+                )}
+                <CartTable
+                  carts={carts}
+                  onEdit={canUpdate ? openEdit : undefined}
+                  onDelete={canDelete ? deleteCart : undefined}
+                  onDuplicate={canDuplicate ? duplicateCart : undefined}
+                  showActions={showActions}
+                />
+              </>
             )}
           </CardContent>
         </Card>

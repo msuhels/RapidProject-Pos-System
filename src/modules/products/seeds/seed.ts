@@ -16,3 +16,4 @@ export default async function seedProductsModule(db?: any) {
   console.log('ℹ️  Products module fields are registered in main seed script');
 }
 
+

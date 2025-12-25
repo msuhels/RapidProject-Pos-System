@@ -231,3 +231,51 @@ export async function duplicateProduct(
   });
 }
 
+export async function decreaseProductQuantity(
+  productId: string,
+  tenantId: string,
+  quantityToDecrease: number,
+  userId: string,
+): Promise<Product | null> {
+  const product = await getProductById(productId, tenantId);
+  if (!product) {
+    throw new Error('Product not found');
+  }
+
+  const currentQuantity = parseInt(product.quantity) || 0;
+  const newQuantity = Math.max(0, currentQuantity - quantityToDecrease);
+
+  if (newQuantity < 0) {
+    throw new Error(`Insufficient stock. Available: ${currentQuantity}, Requested: ${quantityToDecrease}`);
+  }
+
+  const [result] = await db
+    .update(products)
+    .set({
+      quantity: newQuantity.toString(),
+      status: newQuantity === 0 ? 'out_of_stock' : newQuantity < 10 ? 'low_stock' : 'in_stock',
+      updatedBy: userId,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(products.id, productId), eq(products.tenantId, tenantId)))
+    .returning();
+
+  return {
+    ...result,
+    labelIds: (result.labelIds as string[]) || [],
+    image: result.image || null,
+    category: result.category || null,
+    sku: result.sku || null,
+    location: result.location || null,
+    costPrice: result.costPrice || null,
+    sellingPrice: result.sellingPrice || null,
+    taxRate: result.taxRate || null,
+    status: result.status || 'in_stock',
+    createdAt: result.createdAt.toISOString(),
+    updatedAt: result.updatedAt.toISOString(),
+    createdBy: result.createdBy || null,
+    updatedBy: result.updatedBy || null,
+    deletedAt: result.deletedAt?.toISOString() || null,
+  };
+}
+

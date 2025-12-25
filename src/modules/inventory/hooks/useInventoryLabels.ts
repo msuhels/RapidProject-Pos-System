@@ -84,3 +84,4 @@ export function useInventoryLabels() {
   return { labels, loading, refetch };
 }
 
+
