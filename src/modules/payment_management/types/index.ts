@@ -68,6 +68,7 @@ export interface PaymentListFilters {
   search?: string;
   paymentStatus?: PaymentStatus;
   paymentMethodId?: string;
+  saleReference?: string;
   dateFrom?: string;
   dateTo?: string;
 }

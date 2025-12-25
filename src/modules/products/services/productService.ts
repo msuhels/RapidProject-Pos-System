@@ -271,6 +271,8 @@ export async function decreaseProductQuantity(
   tenantId: string,
   quantityToDecrease: number,
   userId: string,
+  reason?: string,
+  referenceId?: string,
 ): Promise<Product | null> {
   // Pass userId so admins can decrease quantity of out of stock products
   const product = await getProductById(productId, tenantId, userId);
@@ -295,6 +297,90 @@ export async function decreaseProductQuantity(
     })
     .where(and(eq(products.id, productId), eq(products.tenantId, tenantId)))
     .returning();
+
+  // Log stock movement
+  try {
+    const { logStockMovement } = await import('../../inventory/services/stockMovementService');
+    await logStockMovement({
+      productId,
+      tenantId,
+      userId,
+      movementType: 'decrease',
+      quantity: quantityToDecrease,
+      previousQuantity: currentQuantity,
+      newQuantity,
+      reason: reason || 'sale',
+      referenceId: referenceId || null,
+    });
+  } catch (error) {
+    console.error('Failed to log stock movement:', error);
+    // Don't fail the operation if logging fails
+  }
+
+  return {
+    ...result,
+    labelIds: (result.labelIds as string[]) || [],
+    image: result.image || null,
+    category: result.category || null,
+    sku: result.sku || null,
+    location: result.location || null,
+    costPrice: result.costPrice || null,
+    sellingPrice: result.sellingPrice || null,
+    taxRate: result.taxRate || null,
+    status: result.status || 'in_stock',
+    createdAt: result.createdAt.toISOString(),
+    updatedAt: result.updatedAt.toISOString(),
+    createdBy: result.createdBy || null,
+    updatedBy: result.updatedBy || null,
+    deletedAt: result.deletedAt?.toISOString() || null,
+  };
+}
+
+export async function increaseProductQuantity(
+  productId: string,
+  tenantId: string,
+  quantityToIncrease: number,
+  userId: string,
+  reason?: string,
+  referenceId?: string,
+): Promise<Product | null> {
+  const product = await getProductById(productId, tenantId);
+  if (!product) {
+    throw new Error('Product not found');
+  }
+
+  const currentQuantity = parseInt(product.quantity) || 0;
+  const newQuantity = currentQuantity + quantityToIncrease;
+
+  const [result] = await db
+    .update(products)
+    .set({
+      quantity: newQuantity.toString(),
+      status: newQuantity === 0 ? 'out_of_stock' : newQuantity < 10 ? 'low_stock' : 'in_stock',
+      updatedBy: userId,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(products.id, productId), eq(products.tenantId, tenantId)))
+    .returning();
+
+  // Log stock movement
+  try {
+    const { logStockMovement } = await import('../../inventory/services/stockMovementService');
+    await logStockMovement({
+      productId,
+      tenantId,
+      userId,
+      movementType: 'increase',
+      quantity: quantityToIncrease,
+      previousQuantity: currentQuantity,
+      newQuantity,
+      reason: reason || 'manual',
+      referenceId: referenceId || null,
+    });
+  } catch (error) {
+    console.error('Failed to log stock movement:', error);
+    // Don't fail the operation if logging fails
+  }
 
   return {
     ...result,
