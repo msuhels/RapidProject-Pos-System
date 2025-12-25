@@ -9,7 +9,7 @@ import {
   TableRow,
 } from '@/core/components/ui/table';
 import { Button } from '@/core/components/ui/button';
-import { ShoppingCart } from 'lucide-react';
+import { ShoppingCart, Archive, ArchiveRestore } from 'lucide-react';
 import { TableActions } from '@/core/components/common/TableActions';
 import { useFieldPermissions } from '@/core/hooks/useFieldPermissions';
 import { usePermissions } from '@/core/hooks/usePermissions';
@@ -22,6 +22,8 @@ interface ProductTableProps {
   onDelete?: (product: Product) => void;
   onDuplicate?: (product: Product) => void;
   onAddToCart?: (product: Product) => void;
+  onArchive?: (product: Product) => void;
+  onUnarchive?: (product: Product) => void;
   showActions?: boolean;
   canAddToCart?: boolean;
 }
@@ -77,6 +79,8 @@ export function ProductTable({
   onDelete,
   onDuplicate,
   onAddToCart,
+  onArchive,
+  onUnarchive,
   showActions = true,
   canAddToCart = false,
 }: ProductTableProps) {
@@ -142,6 +146,35 @@ export function ProductTable({
                       <ShoppingCart className="h-4 w-4 mr-1" />
                       Add to Cart
                     </Button>
+                  )}
+                  {isSuperAdmin && (
+                    <>
+                      {product.archivedAt ? (
+                        onUnarchive && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onUnarchive(product)}
+                            title="Unarchive"
+                            aria-label="Unarchive"
+                          >
+                            <ArchiveRestore className="h-4 w-4" />
+                          </Button>
+                        )
+                      ) : (
+                        onArchive && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onArchive(product)}
+                            title="Archive"
+                            aria-label="Archive"
+                          >
+                            <Archive className="h-4 w-4" />
+                          </Button>
+                        )
+                      )}
+                    </>
                   )}
                   {showActions && (
                     <TableActions

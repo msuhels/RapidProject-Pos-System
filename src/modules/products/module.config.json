@@ -21,6 +21,8 @@
       { "method": "PATCH", "path": "/:id", "handler": "update", "requiresAuth": true },
       { "method": "DELETE", "path": "/:id", "handler": "delete", "requiresAuth": true },
       { "method": "POST", "path": "/:id/duplicate", "handler": "duplicate", "requiresAuth": true },
+      { "method": "POST", "path": "/:id/archive", "handler": "archive", "requiresAuth": true },
+      { "method": "POST", "path": "/:id/unarchive", "handler": "unarchive", "requiresAuth": true },
       { "method": "POST", "path": "/import", "handler": "import", "requiresAuth": true },
       { "method": "GET", "path": "/export", "handler": "export", "requiresAuth": true }
     ]

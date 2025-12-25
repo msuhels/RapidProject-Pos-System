@@ -227,6 +227,52 @@ export default function ProductsPage() {
     );
   };
 
+  const archiveProduct = async (product: Product) => {
+    if (!isSuperAdmin) {
+      toast.error('You do not have permission to archive products');
+      return;
+    }
+
+    toast.promise(
+      (async () => {
+        const res = await fetch(`/api/products/${product.id}/archive`, { method: 'POST' });
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+          throw new Error(json.error || 'Failed to archive product');
+        }
+        await fetchProducts();
+      })(),
+      {
+        loading: 'Archiving product...',
+        success: 'Product archived successfully',
+        error: (err) => (err instanceof Error ? err.message : 'Failed to archive product'),
+      },
+    );
+  };
+
+  const unarchiveProduct = async (product: Product) => {
+    if (!isSuperAdmin) {
+      toast.error('You do not have permission to unarchive products');
+      return;
+    }
+
+    toast.promise(
+      (async () => {
+        const res = await fetch(`/api/products/${product.id}/unarchive`, { method: 'POST' });
+        const json = await res.json();
+        if (!res.ok || !json.success) {
+          throw new Error(json.error || 'Failed to unarchive product');
+        }
+        await fetchProducts();
+      })(),
+      {
+        loading: 'Unarchiving product...',
+        success: 'Product unarchived successfully',
+        error: (err) => (err instanceof Error ? err.message : 'Failed to unarchive product'),
+      },
+    );
+  };
+
   const handleExport = async () => {
     if (!canExport) {
       toast.error('You do not have permission to export products');
@@ -478,15 +524,17 @@ export default function ProductsPage() {
                 <LoadingSpinner />
               </div>
             ) : (
-              <ProductTable
-                products={products}
-                onEdit={canUpdate ? openEdit : undefined}
-                onDelete={canDelete ? deleteProduct : undefined}
-                onDuplicate={canDuplicate ? duplicateProduct : undefined}
-                onAddToCart={canAddToCart ? handleAddToCart : undefined}
-                showActions={showActions}
-                canAddToCart={canAddToCart}
-              />
+                  <ProductTable
+                    products={products}
+                    onEdit={canUpdate ? openEdit : undefined}
+                    onDelete={canDelete ? deleteProduct : undefined}
+                    onDuplicate={canDuplicate ? duplicateProduct : undefined}
+                    onAddToCart={canAddToCart ? handleAddToCart : undefined}
+                    onArchive={isSuperAdmin ? archiveProduct : undefined}
+                    onUnarchive={isSuperAdmin ? unarchiveProduct : undefined}
+                    showActions={showActions}
+                    canAddToCart={canAddToCart}
+                  />
             )}
           </CardContent>
         </Card>

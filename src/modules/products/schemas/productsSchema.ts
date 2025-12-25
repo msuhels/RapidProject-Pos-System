@@ -23,6 +23,7 @@ export const products = pgTable(
     createdBy: uuid('created_by'),
     updatedBy: uuid('updated_by'),
     deletedAt: timestamp('deleted_at'),
+    archivedAt: timestamp('archived_at'), // Archive functionality - archived products hidden from regular users
   },
   (table) => ({
     tenantIdx: index('idx_products_tenant').on(table.tenantId),
