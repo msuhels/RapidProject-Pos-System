@@ -2,6 +2,7 @@ import { and, eq, gte, lte, isNull, inArray } from 'drizzle-orm';
 import { db } from '@/core/lib/db';
 import { orders } from '../../orders/schemas/ordersSchema';
 import { products } from '../../products/schemas/productsSchema';
+import { users } from '@/core/lib/db/baseSchema';
 import type { ReportRecord, ReportListFilters, ReportType } from '../types';
 
 export async function listReportsForTenant(
@@ -211,7 +212,34 @@ export async function listReportsForTenant(
         grouped.set(item.userId, existing);
       }
 
-      // Return user-wise reports with userId (no name lookup to avoid errors)
+      // Fetch user names
+      const userIds = Array.from(grouped.keys());
+      if (userIds.length > 0) {
+        try {
+          const userData = await db
+            .select({ id: users.id, fullName: users.fullName, email: users.email })
+            .from(users)
+            .where(inArray(users.id, userIds));
+
+          const userMap = new Map(
+            userData.map((u) => [u.id, u.fullName || u.email || 'Unknown User']),
+          );
+          for (const record of grouped.values()) {
+            if (record.userId) {
+              record.userName = userMap.get(record.userId) || record.userId;
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching user names:', error);
+          // If lookup fails, use userId as fallback
+          for (const record of grouped.values()) {
+            if (record.userId && !record.userName) {
+              record.userName = record.userId;
+            }
+          }
+        }
+      }
+
       return Array.from(grouped.values()).sort((a, b) => (b.totalAmount || 0) - (a.totalAmount || 0));
     }
 

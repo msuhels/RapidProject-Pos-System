@@ -59,7 +59,6 @@ export function ReportTable({ reports, reportType, loading = false }: ReportTabl
         ];
       case 'product_wise':
         return [
-          { key: 'productId', label: 'Product ID' },
           { key: 'productName', label: 'Product Name' },
           { key: 'quantity', label: 'Quantity Sold' },
           { key: 'totalAmount', label: 'Total Sales' },
@@ -67,7 +66,7 @@ export function ReportTable({ reports, reportType, loading = false }: ReportTabl
         ];
       case 'user_wise':
         return [
-          { key: 'userId', label: 'User ID' },
+          { key: 'userName', label: 'User Name' },
           { key: 'quantity', label: 'Quantity' },
           { key: 'totalAmount', label: 'Total Sales' },
           { key: 'orderCount', label: 'Orders' },
@@ -106,12 +105,10 @@ export function ReportTable({ reports, reportType, loading = false }: ReportTabl
         return formatCurrency(record.totalAmount || 0);
       case 'price':
         return formatCurrency(record.price);
-      case 'productId':
-        return record.productId || 'Unknown';
       case 'productName':
         return record.productName || 'Unknown';
-      case 'userId':
-        return record.userId || 'Unknown';
+      case 'userName':
+        return record.userName || record.userId || 'Unknown';
       case 'paymentMethod':
         return record.paymentMethod || 'N/A';
       case 'orderCount':
