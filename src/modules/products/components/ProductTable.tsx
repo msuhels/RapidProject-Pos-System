@@ -12,6 +12,7 @@ import { Button } from '@/core/components/ui/button';
 import { ShoppingCart } from 'lucide-react';
 import { TableActions } from '@/core/components/common/TableActions';
 import { useFieldPermissions } from '@/core/hooks/useFieldPermissions';
+import { usePermissions } from '@/core/hooks/usePermissions';
 import type { Product } from '../types';
 
 interface ProductTableProps {
@@ -28,7 +29,7 @@ interface ProductTableProps {
 const STANDARD_FIELDS = [
   { code: 'name', label: 'Name', render: (p: Product) => p.name },
   { code: 'price', label: 'Price', render: (p: Product) => p.price },
-  { code: 'quantity', label: 'Quantity', render: (p: Product) => p.quantity },
+  { code: 'quantity', label: 'Quantity', render: (p: Product) => p.quantity, superAdminOnly: true },
   { code: 'image', label: 'Image', render: (p: Product) => p.image ? 'Yes' : 'No' },
   { code: 'category', label: 'Category', render: (p: Product) => p.category || '-' },
   { code: 'costPrice', label: 'Cost Price', render: (p: Product) => p.costPrice || '-' },
@@ -54,6 +55,11 @@ export function ProductTable({
   canAddToCart = false,
 }: ProductTableProps) {
   const { isFieldVisible, loading: loadingPerms } = useFieldPermissions('products');
+  const { hasPermission } = usePermissions();
+  
+  // Check if user is Super Admin (has admin:* permission)
+  // Super Admins have admin:* permission which grants all permissions
+  const isSuperAdmin = hasPermission('admin:*');
 
   if (loading || loadingPerms) {
     return (
@@ -67,9 +73,19 @@ export function ProductTable({
     );
   }
 
-  const visibleFields = STANDARD_FIELDS.filter((field) =>
-    isFieldVisible('products', field.code),
-  );
+  const visibleFields = STANDARD_FIELDS.filter((field) => {
+    // Check field-level permissions first
+    if (!isFieldVisible('products', field.code)) {
+      return false;
+    }
+    
+    // Filter by Super Admin status - quantity field only for Super Admins
+    if ((field as any).superAdminOnly && !isSuperAdmin) {
+      return false;
+    }
+    
+    return true;
+  });
 
   return (
     <div className="border rounded-lg overflow-hidden bg-card">
@@ -90,7 +106,7 @@ export function ProductTable({
               ))}
               <TableCell className="text-right">
                 <div className="flex items-center justify-end gap-2">
-                  {canAddToCart && onAddToCart && (
+                  {canAddToCart && !isSuperAdmin && onAddToCart && (
                     <Button
                       variant="outline"
                       size="sm"

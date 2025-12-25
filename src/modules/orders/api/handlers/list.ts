@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
       userId: userIdFilter,
       dateFrom,
       dateTo,
-    });
+    }, userId);
 
     return NextResponse.json({ success: true, data: records }, { status: 200 });
   } catch (error) {

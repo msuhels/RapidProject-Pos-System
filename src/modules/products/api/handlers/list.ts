@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category') || undefined;
     const status = searchParams.get('status') || undefined;
 
-    const records = await listProductsForTenant(tenantId, { search, category, status });
+    const records = await listProductsForTenant(tenantId, { search, category, status }, userId);
 
     return NextResponse.json({ success: true, data: records }, { status: 200 });
   } catch (error) {

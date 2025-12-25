@@ -4,11 +4,13 @@ import { orders } from '../schemas/ordersSchema';
 import { products } from '../../products/schemas/productsSchema';
 import { users } from '@/core/lib/db/baseSchema';
 import { decreaseProductQuantity } from '../../products/services/productService';
+import { isUserSuperAdmin } from '@/core/lib/permissions';
 import type { Order, CreateOrderInput, UpdateOrderInput, OrderListFilters } from '../types';
 
 export async function listOrdersForTenant(
   tenantId: string,
   filters: OrderListFilters = {},
+  currentUserId?: string,
 ): Promise<Order[]> {
   const conditions = [eq(orders.tenantId, tenantId), isNull(orders.deletedAt)];
 
@@ -24,20 +26,34 @@ export async function listOrdersForTenant(
     conditions.push(lte(orders.orderDate, new Date(filters.dateTo)));
   }
 
+  // Check if current user has SUPER_ADMIN role by querying user_roles bridge table
+  const isSuperAdmin = currentUserId ? await isUserSuperAdmin(currentUserId) : false;
+
   if (filters.search) {
     const searchTerm = `%${filters.search}%`;
-    conditions.push(
-      or(
-        ilike(orders.userId, searchTerm),
-        ilike(orders.totalAmount, searchTerm),
-        ilike(users.fullName, searchTerm),
-        ilike(users.email, searchTerm),
-      )!,
-    );
+    if (isSuperAdmin) {
+      // Super Admin can search by user name and email
+      conditions.push(
+        or(
+          ilike(orders.userId, searchTerm),
+          ilike(orders.totalAmount, searchTerm),
+          ilike(users.fullName, searchTerm),
+          ilike(users.email, searchTerm),
+        )!,
+      );
+    } else {
+      // Regular users can only search by userId and totalAmount
+      conditions.push(
+        or(
+          ilike(orders.userId, searchTerm),
+          ilike(orders.totalAmount, searchTerm),
+        )!,
+      );
+    }
   }
 
-  // Join with users table to get user name and email
-  const results = await db
+  // Conditionally join with users table only if current user is Super Admin
+  const baseQuery = db
     .select({
       // Order fields
       id: orders.id,
@@ -60,14 +76,21 @@ export async function listOrdersForTenant(
       createdBy: orders.createdBy,
       updatedBy: orders.updatedBy,
       deletedAt: orders.deletedAt,
-      // User fields
-      userName: users.fullName,
-      userEmail: users.email,
+      // User fields (only if Super Admin)
+      ...(isSuperAdmin
+        ? {
+            userName: users.fullName,
+            userEmail: users.email,
+          }
+        : {}),
     })
-    .from(orders)
-    .leftJoin(users, eq(orders.userId, users.id))
-    .where(and(...conditions))
-    .orderBy(desc(orders.orderDate));
+    .from(orders);
+
+  const queryWithJoin = isSuperAdmin
+    ? baseQuery.leftJoin(users, eq(orders.userId, users.id))
+    : baseQuery;
+
+  const results = await queryWithJoin.where(and(...conditions)).orderBy(desc(orders.orderDate));
 
   // Get all unique product IDs from all orders
   const allProductIds = new Set<string>();
@@ -122,7 +145,7 @@ export async function listOrdersForTenant(
       };
     });
 
-    return {
+    const order: Order = {
       id: r.id,
       tenantId: r.tenantId,
       userId: r.userId,
@@ -146,11 +169,26 @@ export async function listOrdersForTenant(
       updatedBy: r.updatedBy || null,
       deletedAt: r.deletedAt?.toISOString() || null,
     };
+
+    // Only add userName and userEmail if current user is Super Admin
+    if (isSuperAdmin) {
+      order.userName = (r as any).userName || null;
+      order.userEmail = (r as any).userEmail || null;
+    }
+
+    return order;
   });
 }
 
-export async function getOrderById(id: string, tenantId: string): Promise<Order | null> {
-  const result = await db
+export async function getOrderById(
+  id: string,
+  tenantId: string,
+  currentUserId?: string,
+): Promise<Order | null> {
+  // Check if current user has SUPER_ADMIN role by querying user_roles bridge table
+  const isSuperAdmin = currentUserId ? await isUserSuperAdmin(currentUserId) : false;
+
+  const baseQuery = db
     .select({
       // Order fields
       id: orders.id,
@@ -173,18 +211,27 @@ export async function getOrderById(id: string, tenantId: string): Promise<Order 
       createdBy: orders.createdBy,
       updatedBy: orders.updatedBy,
       deletedAt: orders.deletedAt,
-      // User fields
-      userName: users.fullName,
-      userEmail: users.email,
+      // User fields (only if Super Admin)
+      ...(isSuperAdmin
+        ? {
+            userName: users.fullName,
+            userEmail: users.email,
+          }
+        : {}),
     })
-    .from(orders)
-    .leftJoin(users, eq(orders.userId, users.id))
+    .from(orders);
+
+  const queryWithJoin = isSuperAdmin
+    ? baseQuery.leftJoin(users, eq(orders.userId, users.id))
+    : baseQuery;
+
+  const queryResult = await queryWithJoin
     .where(and(eq(orders.id, id), eq(orders.tenantId, tenantId), isNull(orders.deletedAt)))
     .limit(1);
 
-  if (result.length === 0) return null;
+  if (queryResult.length === 0) return null;
 
-  const r = result[0];
+  const r = queryResult[0];
   const orderProducts = (r.products as any[]) || [];
 
   // Fetch product names
@@ -229,7 +276,7 @@ export async function getOrderById(id: string, tenantId: string): Promise<Order 
     };
   });
 
-  return {
+  const order: Order = {
     id: r.id,
     tenantId: r.tenantId,
     userId: r.userId,
@@ -253,6 +300,14 @@ export async function getOrderById(id: string, tenantId: string): Promise<Order 
     updatedBy: r.updatedBy || null,
     deletedAt: r.deletedAt?.toISOString() || null,
   };
+
+  // Only add userName and userEmail if current user is Super Admin
+  if (isSuperAdmin) {
+    order.userName = (r as any).userName || null;
+    order.userEmail = (r as any).userEmail || null;
+  }
+
+  return order;
 }
 
 export async function createOrder(params: {

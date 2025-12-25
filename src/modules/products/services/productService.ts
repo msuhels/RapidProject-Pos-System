@@ -1,13 +1,25 @@
-import { and, desc, eq, ilike, isNull, or } from 'drizzle-orm';
+import { and, desc, eq, ilike, isNull, or, ne } from 'drizzle-orm';
 import { db } from '@/core/lib/db';
 import { products } from '../schemas/productsSchema';
+import { isUserSuperAdmin } from '@/core/lib/permissions';
 import type { Product, CreateProductInput, UpdateProductInput, ProductListFilters } from '../types';
 
 export async function listProductsForTenant(
   tenantId: string,
   filters: ProductListFilters = {},
+  currentUserId?: string,
+  showAllProducts?: boolean, // Flag to bypass out-of-stock filter (for inventory module)
 ): Promise<Product[]> {
   const conditions = [eq(products.tenantId, tenantId), isNull(products.deletedAt)];
+
+  // Check if current user is Super Admin by querying user_roles bridge table
+  const isSuperAdmin = currentUserId ? await isUserSuperAdmin(currentUserId) : false;
+
+  // For regular users (non-Super Admin), hide out of stock products
+  // UNLESS showAllProducts flag is true (for inventory management)
+  if (!isSuperAdmin && !showAllProducts) {
+    conditions.push(ne(products.status, 'out_of_stock'));
+  }
 
   if (filters.category && filters.category !== 'all') {
     conditions.push(eq(products.category, filters.category));
@@ -63,11 +75,31 @@ export async function listProductsForTenant(
   }));
 }
 
-export async function getProductById(id: string, tenantId: string): Promise<Product | null> {
+export async function getProductById(
+  id: string,
+  tenantId: string,
+  currentUserId?: string,
+  showAllProducts?: boolean, // Flag to bypass out-of-stock filter (for inventory module)
+): Promise<Product | null> {
+  // Check if current user is Super Admin by querying user_roles bridge table
+  const isSuperAdmin = currentUserId ? await isUserSuperAdmin(currentUserId) : false;
+
+  const conditions = [
+    eq(products.id, id),
+    eq(products.tenantId, tenantId),
+    isNull(products.deletedAt),
+  ];
+
+  // For regular users (non-Super Admin), hide out of stock products
+  // UNLESS showAllProducts flag is true (for inventory management)
+  if (!isSuperAdmin && !showAllProducts) {
+    conditions.push(ne(products.status, 'out_of_stock'));
+  }
+
   const result = await db
     .select()
     .from(products)
-    .where(and(eq(products.id, id), eq(products.tenantId, tenantId), isNull(products.deletedAt)))
+    .where(and(...conditions))
     .limit(1);
 
   if (result.length === 0) return null;
@@ -147,7 +179,8 @@ export async function updateProduct(params: {
 }): Promise<Product | null> {
   const { id, tenantId, userId, data } = params;
 
-  const existing = await getProductById(id, tenantId);
+  // Pass userId so admins can update out of stock products
+  const existing = await getProductById(id, tenantId, userId);
   if (!existing) return null;
 
   const [result] = await db
@@ -191,7 +224,8 @@ export async function updateProduct(params: {
 }
 
 export async function deleteProduct(id: string, tenantId: string, userId: string): Promise<boolean> {
-  const existing = await getProductById(id, tenantId);
+  // Pass userId so admins can delete out of stock products
+  const existing = await getProductById(id, tenantId, userId);
   if (!existing) return false;
 
   await db
@@ -211,7 +245,8 @@ export async function duplicateProduct(
   tenantId: string,
   userId: string,
 ): Promise<Product | null> {
-  const existing = await getProductById(id, tenantId);
+  // Pass userId so admins can duplicate out of stock products
+  const existing = await getProductById(id, tenantId, userId);
   if (!existing) return null;
 
   return createProduct({
@@ -239,7 +274,8 @@ export async function decreaseProductQuantity(
   reason?: string,
   referenceId?: string,
 ): Promise<Product | null> {
-  const product = await getProductById(productId, tenantId);
+  // Pass userId so admins can decrease quantity of out of stock products
+  const product = await getProductById(productId, tenantId, userId);
   if (!product) {
     throw new Error('Product not found');
   }
