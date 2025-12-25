@@ -293,8 +293,56 @@ export async function createOrder(params: {
     await decreaseProductQuantity(product.productId, tenantId, requestedQuantity, userId);
   }
 
-  // Products already have names from enrichedProducts
-  const orderProducts = (orderResult.products as any[]) || [];
+  // Update customer's totalPurchases
+  try {
+    const { getCustomerByUserId, updateCustomer, createCustomer } = await import('../../customer_management/services/customerService');
+    const { users } = await import('@/core/lib/db/baseSchema');
+    
+    // Get user info to create customer if needed
+    const userInfo = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, data.userId))
+      .limit(1);
+
+    let customer = await getCustomerByUserId(data.userId, tenantId);
+    
+    // If customer doesn't exist, create one
+    if (!customer && userInfo.length > 0) {
+      const user = userInfo[0];
+      customer = await createCustomer({
+        data: {
+          name: user.fullName || user.email || 'Customer',
+          email: user.email,
+          phoneNumber: user.phoneNumber || undefined,
+          isActive: true,
+        },
+        tenantId,
+        userId: userId,
+        linkedUserId: data.userId,
+      });
+    }
+
+    if (customer) {
+      // Get all orders for this customer to calculate total
+      const allOrders = await listOrdersForTenant(tenantId, { userId: data.userId });
+      const newTotalPurchases = allOrders.reduce((sum, order) => {
+        return sum + (parseFloat(order.totalAmount || '0') || 0);
+      }, 0);
+
+      await updateCustomer({
+        id: customer.id,
+        tenantId,
+        userId,
+        data: {
+          totalPurchases: newTotalPurchases,
+        },
+      });
+    }
+  } catch (error) {
+    console.error('Failed to update customer totalPurchases:', error);
+    // Don't fail order creation if customer update fails
+  }
 
   return {
     ...orderResult,
@@ -353,6 +401,32 @@ export async function updateOrder(params: {
     .where(and(eq(orders.id, id), eq(orders.tenantId, tenantId)))
     .returning();
 
+  // Update customer's totalPurchases
+  try {
+    const finalUserId = data.userId ?? existing.userId;
+    const { getCustomerByUserId, updateCustomer } = await import('../../customer_management/services/customerService');
+    const customer = await getCustomerByUserId(finalUserId, tenantId);
+    if (customer) {
+      // Get all orders for this customer to calculate total
+      const allOrders = await listOrdersForTenant(tenantId, { userId: finalUserId });
+      const newTotalPurchases = allOrders.reduce((sum, order) => {
+        return sum + (parseFloat(order.totalAmount || '0') || 0);
+      }, 0);
+
+      await updateCustomer({
+        id: customer.id,
+        tenantId,
+        userId,
+        data: {
+          totalPurchases: newTotalPurchases,
+        },
+      });
+    }
+  } catch (error) {
+    console.error('Failed to update customer totalPurchases:', error);
+    // Don't fail order update if customer update fails
+  }
+
   return {
     ...orderResult,
     labelIds: (orderResult.labelIds as string[]) || [],
@@ -379,6 +453,31 @@ export async function deleteOrder(id: string, tenantId: string, userId: string):
       updatedAt: new Date(),
     })
     .where(and(eq(orders.id, id), eq(orders.tenantId, tenantId)));
+
+  // Update customer's totalPurchases after order deletion
+  try {
+    const { getCustomerByUserId, updateCustomer } = await import('../../customer_management/services/customerService');
+    const customer = await getCustomerByUserId(existing.userId, tenantId);
+    if (customer) {
+      // Get all non-deleted orders for this customer to calculate total
+      const allOrders = await listOrdersForTenant(tenantId, { userId: existing.userId });
+      const newTotalPurchases = allOrders.reduce((sum, order) => {
+        return sum + (parseFloat(order.totalAmount || '0') || 0);
+      }, 0);
+
+      await updateCustomer({
+        id: customer.id,
+        tenantId,
+        userId,
+        data: {
+          totalPurchases: newTotalPurchases,
+        },
+      });
+    }
+  } catch (error) {
+    console.error('Failed to update customer totalPurchases:', error);
+    // Don't fail order deletion if customer update fails
+  }
 
   return true;
 }

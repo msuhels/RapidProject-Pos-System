@@ -135,6 +135,28 @@ export async function POST(request: NextRequest) {
       metadata: {},
     });
     
+    // Create customer record if user has "USER" role
+    if (defaultRole.code === 'USER') {
+      try {
+        console.log('[Register] Creating customer record for user with USER role');
+        const { createCustomer } = await import('@/modules/customer_management/services/customerService');
+        await createCustomer({
+          data: {
+            name: name || email || 'Customer',
+            email: email,
+            isActive: true,
+          },
+          tenantId: tenantId,
+          userId: user.id,
+          linkedUserId: user.id,
+        });
+        console.log('[Register] Customer record created successfully');
+      } catch (error) {
+        console.error('[Register] Failed to create customer record:', error);
+        // Don't fail registration if customer creation fails
+      }
+    }
+    
     // Generate JWT email verification token (no database storage needed)
     const verificationToken = generateEmailVerificationToken(user.email, 24); // 24 hours expiry
     

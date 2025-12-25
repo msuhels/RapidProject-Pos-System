@@ -20,6 +20,9 @@
       { "method": "GET", "path": "/:id", "handler": "getById", "requiresAuth": true },
       { "method": "PATCH", "path": "/:id", "handler": "update", "requiresAuth": true },
       { "method": "DELETE", "path": "/:id", "handler": "delete", "requiresAuth": true },
+      { "method": "GET", "path": "/sales-history", "handler": "salesHistory", "requiresAuth": true },
+      { "method": "POST", "path": "/recalculate-totals", "handler": "recalculateTotals", "requiresAuth": true },
+      { "method": "POST", "path": "/cleanup-duplicates", "handler": "cleanupDuplicates", "requiresAuth": true },
       { "method": "POST", "path": "/import", "handler": "import", "requiresAuth": true },
       { "method": "GET", "path": "/export", "handler": "export", "requiresAuth": true }
     ]
