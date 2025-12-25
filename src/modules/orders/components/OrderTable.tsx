@@ -28,9 +28,16 @@ const STANDARD_FIELDS = [
     render: (o: Order) => new Date(o.orderDate).toLocaleDateString(),
   },
   {
-    code: 'userId',
-    label: 'User ID',
-    render: (o: Order) => o.userId,
+    code: 'userName',
+    label: 'User',
+    render: (o: Order) => (
+      <div>
+        <div className="font-medium">{o.userName || o.userEmail || o.userId}</div>
+        {o.userEmail && o.userName && (
+          <div className="text-sm text-muted-foreground">{o.userEmail}</div>
+        )}
+      </div>
+    ),
   },
   {
     code: 'products',
@@ -38,13 +45,15 @@ const STANDARD_FIELDS = [
     render: (o: Order) => (
       <div>
         <div className="font-medium">{o.products.length} product(s)</div>
-        <div className="text-sm text-muted-foreground">
-          {o.products.slice(0, 2).map((p, i) => (
-            <span key={i}>
-              {i > 0 && ', '}Qty: {p.quantity}
-            </span>
+        <div className="text-sm text-muted-foreground space-y-1">
+          {o.products.slice(0, 3).map((p, i) => (
+            <div key={i}>
+              {p.productName || 'Unknown'} - Qty: {p.quantity} @ ${p.price}
+            </div>
           ))}
-          {o.products.length > 2 && ` +${o.products.length - 2} more`}
+          {o.products.length > 3 && (
+            <div className="text-xs">+{o.products.length - 3} more product(s)</div>
+          )}
         </div>
       </div>
     ),
@@ -52,7 +61,7 @@ const STANDARD_FIELDS = [
   {
     code: 'totalAmount',
     label: 'Total Amount',
-    render: (o: Order) => o.totalAmount || '0.00',
+    render: (o: Order) => `$${o.totalAmount || '0.00'}`,
   },
 ] as const;
 

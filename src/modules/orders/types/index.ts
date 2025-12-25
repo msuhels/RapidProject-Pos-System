@@ -2,12 +2,15 @@ export interface OrderProduct {
   productId: string;
   quantity: string;
   price: string;
+  productName?: string;
 }
 
 export interface Order {
   id: string;
   tenantId: string;
   userId: string;
+  userName?: string;
+  userEmail?: string;
   orderDate: string;
   products: OrderProduct[];
   totalAmount: string | null;
