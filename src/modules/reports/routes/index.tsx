@@ -92,9 +92,9 @@ export default function ReportsPage() {
           case 'monthly_sales':
             return ['Date', 'Quantity', 'Total Sales', 'Orders'];
           case 'product_wise':
-            return ['Product ID', 'Product Name', 'Quantity Sold', 'Total Sales', 'Orders'];
+            return ['Product Name', 'Quantity Sold', 'Total Sales', 'Orders'];
           case 'user_wise':
-            return ['User ID', 'Quantity', 'Total Sales', 'Orders'];
+            return ['User Name', 'Quantity', 'Total Sales', 'Orders'];
           case 'payment_method_wise':
             return ['Payment Method', 'Quantity', 'Total Sales', 'Orders'];
           case 'low_stock':
@@ -118,7 +118,6 @@ export default function ReportsPage() {
             ];
           case 'product_wise':
             return [
-              report.productId || 'Unknown',
               report.productName || 'Unknown',
               report.quantity.toString(),
               (report.totalAmount || 0).toFixed(2),
@@ -126,7 +125,7 @@ export default function ReportsPage() {
             ];
           case 'user_wise':
             return [
-              report.userId || 'Unknown',
+              report.userName || report.userId || 'Unknown',
               report.quantity.toString(),
               (report.totalAmount || 0).toFixed(2),
               (report.orderCount || 0).toString(),
@@ -228,6 +227,24 @@ export default function ReportsPage() {
             {/* Filters */}
             <div className="flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
               <div className="flex flex-1 gap-2 flex-wrap">
+                {reportType === 'product_wise' && (
+                  <div className="relative flex-1 max-w-md">
+                    <Input
+                      placeholder="Product ID (optional)"
+                      value={productId}
+                      onChange={(e) => setProductId(e.target.value)}
+                    />
+                  </div>
+                )}
+                {reportType === 'user_wise' && (
+                  <div className="relative flex-1 max-w-md">
+                    <Input
+                      placeholder="User ID (optional)"
+                      value={userId}
+                      onChange={(e) => setUserId(e.target.value)}
+                    />
+                  </div>
+                )}
                 {hasActiveFilters && (
                   <Button variant="ghost" size="sm" onClick={clearFilters}>
                     <X className="h-4 w-4 mr-2" />
@@ -252,22 +269,6 @@ export default function ReportsPage() {
                     className="w-[150px]"
                   />
                 </div>
-                {reportType === 'product_wise' && (
-                  <Input
-                    placeholder="Product ID (optional)"
-                    value={productId}
-                    onChange={(e) => setProductId(e.target.value)}
-                    className="w-[200px]"
-                  />
-                )}
-                {reportType === 'user_wise' && (
-                  <Input
-                    placeholder="User ID (optional)"
-                    value={userId}
-                    onChange={(e) => setUserId(e.target.value)}
-                    className="w-[200px]"
-                  />
-                )}
               </div>
             </div>
 
