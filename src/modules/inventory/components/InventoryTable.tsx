@@ -91,7 +91,7 @@ export function InventoryTable({
                 key={item.id}
                 className={
                   isLowStock
-                    ? 'bg-red-50 border-l-4 border-l-red-500'
+                    ? 'border-l-4 border-l-red-500'
                     : ''
                 }
               >
