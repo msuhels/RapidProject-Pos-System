@@ -1,0 +1,33 @@
+{
+  "id": "reports",
+  "name": "Reports",
+  "version": "1.0.0",
+  "description": "Business insights through read-only reports derived from order data",
+  "enabled": true,
+  "routes": [
+    {
+      "path": "/reports",
+      "component": "index",
+      "title": "Reports",
+      "requiresAuth": true
+    }
+  ],
+  "api": {
+    "basePath": "/api/reports",
+    "endpoints": [
+      { "method": "GET", "path": "", "handler": "list", "requiresAuth": true }
+    ]
+  },
+  "navigation": {
+    "label": "Reports",
+    "icon": "BarChart3",
+    "path": "/reports",
+    "order": 9
+  },
+  "permissions": {
+    "read": "reports:read",
+    "export": "reports:export",
+    "manage": "reports:*"
+  }
+}
+
