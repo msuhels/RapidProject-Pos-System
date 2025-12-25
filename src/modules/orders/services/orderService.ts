@@ -14,7 +14,17 @@ export async function listOrdersForTenant(
 ): Promise<Order[]> {
   const conditions = [eq(orders.tenantId, tenantId), isNull(orders.deletedAt)];
 
-  if (filters.userId) {
+  // Check if current user is Super Admin by querying user_roles bridge table
+  const isSuperAdmin = currentUserId ? await isUserSuperAdmin(currentUserId) : false;
+
+  // For regular users (non-Super Admin), show only their own orders
+  // Super Admins see all orders
+  if (!isSuperAdmin && currentUserId) {
+    conditions.push(eq(orders.userId, currentUserId));
+  }
+
+  // If Super Admin explicitly filters by userId, respect that filter
+  if (filters.userId && isSuperAdmin) {
     conditions.push(eq(orders.userId, filters.userId));
   }
 
@@ -25,9 +35,6 @@ export async function listOrdersForTenant(
   if (filters.dateTo) {
     conditions.push(lte(orders.orderDate, new Date(filters.dateTo)));
   }
-
-  // Check if current user has SUPER_ADMIN role by querying user_roles bridge table
-  const isSuperAdmin = currentUserId ? await isUserSuperAdmin(currentUserId) : false;
 
   if (filters.search) {
     const searchTerm = `%${filters.search}%`;
