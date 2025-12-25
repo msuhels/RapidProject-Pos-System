@@ -25,11 +25,6 @@ const STANDARD_FIELDS = [
   { code: 'supplier_code', label: 'Supplier Code', render: (r: SupplierRecord) => r.supplierCode },
   { code: 'supplier_name', label: 'Supplier Name', render: (r: SupplierRecord) => r.supplierName },
   {
-    code: 'contact_person',
-    label: 'Contact Person',
-    render: (r: SupplierRecord) => r.contactPerson ?? '-',
-  },
-  {
     code: 'email',
     label: 'Email',
     render: (r: SupplierRecord) => r.email ?? '-',

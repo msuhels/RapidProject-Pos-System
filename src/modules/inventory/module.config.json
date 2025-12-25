@@ -10,6 +10,12 @@
       "component": "index",
       "title": "Inventory",
       "requiresAuth": true
+    },
+    {
+      "path": "/inventory/stock-adjustments",
+      "component": "stock-adjustments",
+      "title": "Stock Adjustments",
+      "requiresAuth": true
     }
   ],
   "api": {

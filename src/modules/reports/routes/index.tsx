@@ -1,11 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { RefreshCcw, Download, X } from 'lucide-react';
+import { useCallback, useEffect, useState, useRef } from 'react';
+import { RefreshCcw, Download, X, Calendar, TrendingUp, Package, Users, CreditCard, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { ProtectedPage } from '@/core/components/common/ProtectedPage';
 import { Button } from '@/core/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/core/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/core/components/ui/card';
 import { Input } from '@/core/components/ui/input';
 import { LoadingSpinner } from '@/core/components/common/LoadingSpinner';
 import { usePermissions } from '@/core/hooks/usePermissions';
@@ -13,78 +13,156 @@ import { useDebounce } from '@/core/hooks/useDebounce';
 import type { ReportRecord, ReportType } from '../types';
 import { ReportTable } from '../components/ReportTable';
 
-const REPORT_TYPES: Array<{ value: ReportType; label: string }> = [
-  { value: 'daily_sales', label: 'Daily Sales' },
-  { value: 'weekly_sales', label: 'Weekly Sales' },
-  { value: 'monthly_sales', label: 'Monthly Sales' },
-  { value: 'product_wise', label: 'Product Wise' },
-  { value: 'user_wise', label: 'User Wise' },
-  { value: 'payment_method_wise', label: 'Payment Method Wise' },
-  { value: 'low_stock', label: 'Low Stock' },
-];
+interface ReportSectionState {
+  data: ReportRecord[];
+  loading: boolean;
+  dateFrom: string;
+  dateTo: string;
+  productId: string;
+  userId: string;
+}
 
 export default function ReportsPage() {
-  const [reports, setReports] = useState<ReportRecord[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [reportType, setReportType] = useState<ReportType>('daily_sales');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
-  const [productId, setProductId] = useState('');
-  const [userId, setUserId] = useState('');
-
   const { hasPermission } = usePermissions();
-
   const canRead = hasPermission('reports:read') || hasPermission('reports:*');
   const canExport = hasPermission('reports:export') || hasPermission('reports:*');
 
-  const fetchReports = useCallback(async () => {
-    if (!canRead) {
-      toast.error('You do not have permission to view reports');
-      return;
-    }
+  // State for each report section
+  const [dailySales, setDailySales] = useState<ReportSectionState>({
+    data: [],
+    loading: false,
+    dateFrom: '',
+    dateTo: '',
+    productId: '',
+    userId: '',
+  });
 
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      params.set('reportType', reportType);
-      if (dateFrom) params.set('dateFrom', dateFrom);
-      if (dateTo) params.set('dateTo', dateTo);
-      if (productId) params.set('productId', productId);
-      if (userId) params.set('userId', userId);
+  const [weeklySales, setWeeklySales] = useState<ReportSectionState>({
+    data: [],
+    loading: false,
+    dateFrom: '',
+    dateTo: '',
+    productId: '',
+    userId: '',
+  });
 
-      const res = await fetch(`/api/reports?${params.toString()}`);
-      const json = await res.json();
+  const [monthlySales, setMonthlySales] = useState<ReportSectionState>({
+    data: [],
+    loading: false,
+    dateFrom: '',
+    dateTo: '',
+    productId: '',
+    userId: '',
+  });
 
-      if (res.ok && json.success) {
-        setReports(json.data ?? []);
-      } else {
-        toast.error(json.error || 'Failed to load reports');
+  const [productWise, setProductWise] = useState<ReportSectionState>({
+    data: [],
+    loading: false,
+    dateFrom: '',
+    dateTo: '',
+    productId: '',
+    userId: '',
+  });
+
+  const [userWise, setUserWise] = useState<ReportSectionState>({
+    data: [],
+    loading: false,
+    dateFrom: '',
+    dateTo: '',
+    productId: '',
+    userId: '',
+  });
+
+  const [paymentMethodWise, setPaymentMethodWise] = useState<ReportSectionState>({
+    data: [],
+    loading: false,
+    dateFrom: '',
+    dateTo: '',
+    productId: '',
+    userId: '',
+  });
+
+  const [lowStock, setLowStock] = useState<ReportSectionState>({
+    data: [],
+    loading: false,
+    dateFrom: '',
+    dateTo: '',
+    productId: '',
+    userId: '',
+  });
+
+  const fetchReport = useCallback(
+    async (reportType: ReportType, filters: { dateFrom: string; dateTo: string; productId: string; userId: string }) => {
+      if (!canRead) return;
+
+      const setStateMap = {
+        daily_sales: setDailySales,
+        weekly_sales: setWeeklySales,
+        monthly_sales: setMonthlySales,
+        product_wise: setProductWise,
+        user_wise: setUserWise,
+        payment_method_wise: setPaymentMethodWise,
+        low_stock: setLowStock,
+      };
+
+      const setState = setStateMap[reportType];
+      if (!setState) return;
+
+      setState((prev) => ({ ...prev, loading: true }));
+      try {
+        const params = new URLSearchParams();
+        params.set('reportType', reportType);
+        if (filters.dateFrom) params.set('dateFrom', filters.dateFrom);
+        if (filters.dateTo) params.set('dateTo', filters.dateTo);
+        if (filters.productId) params.set('productId', filters.productId);
+        if (filters.userId) params.set('userId', filters.userId);
+
+        const res = await fetch(`/api/reports?${params.toString()}`);
+        const json = await res.json();
+
+        if (res.ok && json.success) {
+          setState((prev) => ({ ...prev, data: json.data ?? [], loading: false }));
+        } else {
+          toast.error(json.error || `Failed to load ${reportType} report`);
+          setState((prev) => ({ ...prev, loading: false }));
+        }
+      } catch (error) {
+        console.error(`Report fetch error (${reportType}):`, error);
+        toast.error(`Failed to load ${reportType} report`);
+        setState((prev) => ({ ...prev, loading: false }));
       }
-    } catch (error) {
-      console.error('Reports fetch error:', error);
-      toast.error('Failed to load reports');
-    } finally {
-      setLoading(false);
-    }
-  }, [canRead, reportType, dateFrom, dateTo, productId, userId]);
+    },
+    [canRead],
+  );
 
+  // Fetch all reports on mount only
   useEffect(() => {
-    fetchReports();
-  }, [fetchReports]);
+    if (!canRead) return;
 
-  const handleExport = async () => {
+    const emptyFilters = { dateFrom: '', dateTo: '', productId: '', userId: '' };
+    
+    fetchReport('daily_sales', emptyFilters);
+    fetchReport('weekly_sales', emptyFilters);
+    fetchReport('monthly_sales', emptyFilters);
+    fetchReport('product_wise', emptyFilters);
+    fetchReport('user_wise', emptyFilters);
+    fetchReport('payment_method_wise', emptyFilters);
+    fetchReport('low_stock', emptyFilters);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canRead]);
+
+  const handleExport = async (reportType: ReportType, data: ReportRecord[]) => {
     if (!canExport) {
       toast.error('You do not have permission to export reports');
       return;
     }
 
-    if (!reports.length) {
-      toast.info('No reports to export');
+    if (!data.length) {
+      toast.info('No data to export');
       return;
     }
 
     try {
-      // Get column headers based on report type
       const getHeaders = () => {
         switch (reportType) {
           case 'daily_sales':
@@ -105,13 +183,13 @@ export default function ReportsPage() {
       };
 
       const headers = getHeaders();
-      const rows = reports.map((report) => {
+      const rows = data.map((report) => {
         switch (reportType) {
           case 'daily_sales':
           case 'weekly_sales':
           case 'monthly_sales':
             return [
-              report.date,
+              report.date || '',
               report.quantity.toString(),
               (report.totalAmount || 0).toFixed(2),
               (report.orderCount || 0).toString(),
@@ -144,7 +222,7 @@ export default function ReportsPage() {
               (report.totalAmount || 0).toString(),
             ];
           default:
-            return [report.date, report.quantity.toString(), report.price.toFixed(2)];
+            return [report.date || '', report.quantity.toString(), report.price.toFixed(2)];
         }
       });
 
@@ -158,21 +236,197 @@ export default function ReportsPage() {
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-      toast.success('Reports exported successfully');
+      toast.success('Report exported successfully');
     } catch (error) {
       console.error('Export error:', error);
-      toast.error('Failed to export reports');
+      toast.error('Failed to export report');
     }
   };
 
-  const clearFilters = () => {
-    setDateFrom('');
-    setDateTo('');
-    setProductId('');
-    setUserId('');
-  };
+  // Report Section Component
+  const ReportSection = ({
+    title,
+    description,
+    icon: Icon,
+    reportType,
+    state,
+    setState,
+    showProductFilter = false,
+    showUserFilter = false,
+  }: {
+    title: string;
+    description: string;
+    icon: React.ElementType;
+    reportType: ReportType;
+    state: ReportSectionState;
+    setState: React.Dispatch<React.SetStateAction<ReportSectionState>>;
+    showProductFilter?: boolean;
+    showUserFilter?: boolean;
+  }) => {
+    const debouncedProductId = useDebounce(state.productId, 500);
+    const debouncedUserId = useDebounce(state.userId, 500);
+    const isInitialMount = useRef(true);
+    const prevFiltersRef = useRef({ dateFrom: '', dateTo: '', productId: '', userId: '' });
 
-  const hasActiveFilters = dateFrom || dateTo || productId || userId;
+    // Refetch when debounced filters or date filters change (but not on initial mount)
+    useEffect(() => {
+      // Skip on initial mount - data is already fetched in parent useEffect
+      if (isInitialMount.current) {
+        isInitialMount.current = false;
+        prevFiltersRef.current = {
+          dateFrom: state.dateFrom,
+          dateTo: state.dateTo,
+          productId: debouncedProductId,
+          userId: debouncedUserId,
+        };
+        return;
+      }
+
+      // Only fetch if filters actually changed
+      const filtersChanged =
+        prevFiltersRef.current.dateFrom !== state.dateFrom ||
+        prevFiltersRef.current.dateTo !== state.dateTo ||
+        prevFiltersRef.current.productId !== debouncedProductId ||
+        prevFiltersRef.current.userId !== debouncedUserId;
+
+      if (filtersChanged) {
+        prevFiltersRef.current = {
+          dateFrom: state.dateFrom,
+          dateTo: state.dateTo,
+          productId: debouncedProductId,
+          userId: debouncedUserId,
+        };
+
+        const filters = {
+          dateFrom: state.dateFrom,
+          dateTo: state.dateTo,
+          productId: debouncedProductId,
+          userId: debouncedUserId,
+        };
+        fetchReport(reportType, filters);
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [debouncedProductId, debouncedUserId, state.dateFrom, state.dateTo, reportType]);
+
+    const hasActiveFilters = state.dateFrom || state.dateTo || state.productId || state.userId;
+
+    const clearFilters = () => {
+      setState((prev) => ({
+        ...prev,
+        dateFrom: '',
+        dateTo: '',
+        productId: '',
+        userId: '',
+      }));
+    };
+
+    const handleRefresh = () => {
+      const filters = {
+        dateFrom: state.dateFrom,
+        dateTo: state.dateTo,
+        productId: state.productId,
+        userId: state.userId,
+      };
+      fetchReport(reportType, filters);
+    };
+
+    return (
+      <Card className="shadow-sm hover:shadow-md transition-shadow">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Icon className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="text-lg font-semibold">{title}</CardTitle>
+                <CardDescription className="text-sm">{description}</CardDescription>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              {canExport && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleExport(reportType, state.data)}
+                  disabled={!state.data.length || state.loading}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Export
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRefresh}
+                disabled={state.loading}
+              >
+                <RefreshCcw className={`h-4 w-4 ${state.loading ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Filters */}
+          <div className="flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
+            <div className="flex flex-1 gap-2 flex-wrap">
+              {showProductFilter && (
+                <div className="relative flex-1 max-w-md">
+                  <Input
+                    placeholder="Product ID (optional)"
+                    value={state.productId}
+                    onChange={(e) => setState((prev) => ({ ...prev, productId: e.target.value }))}
+                  />
+                </div>
+              )}
+              {showUserFilter && (
+                <div className="relative flex-1 max-w-md">
+                  <Input
+                    placeholder="User ID (optional)"
+                    value={state.userId}
+                    onChange={(e) => setState((prev) => ({ ...prev, userId: e.target.value }))}
+                  />
+                </div>
+              )}
+              {hasActiveFilters && (
+                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                  <X className="h-4 w-4 mr-2" />
+                  Clear Filters
+                </Button>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2 items-center">
+              <div className="flex gap-2">
+                <Input
+                  type="date"
+                  placeholder="From Date"
+                  value={state.dateFrom}
+                  onChange={(e) => setState((prev) => ({ ...prev, dateFrom: e.target.value }))}
+                  className="w-[150px]"
+                />
+                <Input
+                  type="date"
+                  placeholder="To Date"
+                  value={state.dateTo}
+                  onChange={(e) => setState((prev) => ({ ...prev, dateTo: e.target.value }))}
+                  className="w-[150px]"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Table */}
+          {state.loading ? (
+            <div className="flex items-center justify-center py-12">
+              <LoadingSpinner />
+            </div>
+          ) : (
+            <ReportTable reports={state.data} reportType={reportType} loading={state.loading} />
+          )}
+        </CardContent>
+      </Card>
+    );
+  };
 
   if (!canRead) {
     return (
@@ -189,101 +443,90 @@ export default function ReportsPage() {
   }
 
   return (
-    <ProtectedPage permission="reports:read" title="Reports" description="Business insights">
-      <div className="w-full px-4 py-6 space-y-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-2xl font-bold">Reports</CardTitle>
-            <div className="flex gap-2">
-              {canExport && (
-                <Button variant="outline" size="sm" onClick={handleExport} disabled={!reports.length}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Export
-                </Button>
-              )}
-              <Button variant="ghost" size="sm" onClick={fetchReports}>
-                <RefreshCcw className="h-4 w-4" />
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Report Type Tabs */}
-            <div className="flex flex-wrap gap-2 border-b border-border pb-4">
-              {REPORT_TYPES.map((type) => (
-                <button
-                  key={type.value}
-                  onClick={() => setReportType(type.value)}
-                  className={`px-4 py-2 text-sm font-medium transition-colors rounded-t-lg ${
-                    reportType === type.value
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                  }`}
-                >
-                  {type.label}
-                </button>
-              ))}
-            </div>
+    <ProtectedPage permission="reports:read" title="Reports" description="Business insights and analytics">
+      <div className="w-full px-4 py-6 space-y-6">
+        {/* Page Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Reports Dashboard</h1>
+            <p className="text-muted-foreground mt-1">Comprehensive business insights and analytics</p>
+          </div>
+        </div>
 
-            {/* Filters */}
-            <div className="flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
-              <div className="flex flex-1 gap-2 flex-wrap">
-                {reportType === 'product_wise' && (
-                  <div className="relative flex-1 max-w-md">
-                    <Input
-                      placeholder="Product ID (optional)"
-                      value={productId}
-                      onChange={(e) => setProductId(e.target.value)}
-                    />
-                  </div>
-                )}
-                {reportType === 'user_wise' && (
-                  <div className="relative flex-1 max-w-md">
-                    <Input
-                      placeholder="User ID (optional)"
-                      value={userId}
-                      onChange={(e) => setUserId(e.target.value)}
-                    />
-                  </div>
-                )}
-                {hasActiveFilters && (
-                  <Button variant="ghost" size="sm" onClick={clearFilters}>
-                    <X className="h-4 w-4 mr-2" />
-                    Clear Filters
-                  </Button>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-2 items-center">
-                <div className="flex gap-2">
-                  <Input
-                    type="date"
-                    placeholder="From Date"
-                    value={dateFrom}
-                    onChange={(e) => setDateFrom(e.target.value)}
-                    className="w-[150px]"
-                  />
-                  <Input
-                    type="date"
-                    placeholder="To Date"
-                    value={dateTo}
-                    onChange={(e) => setDateTo(e.target.value)}
-                    className="w-[150px]"
-                  />
-                </div>
-              </div>
-            </div>
+        {/* Sales Reports - Sequential */}
+        <div className="space-y-6">
+          <ReportSection
+            title="Daily Sales Report"
+            description="Daily sales breakdown by date"
+            icon={Calendar}
+            reportType="daily_sales"
+            state={dailySales}
+            setState={setDailySales}
+          />
 
-            {/* Report Table */}
-            {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <LoadingSpinner />
-              </div>
-            ) : (
-              <ReportTable reports={reports} reportType={reportType} loading={loading} />
-            )}
-          </CardContent>
-        </Card>
+          <ReportSection
+            title="Weekly Sales Report"
+            description="Weekly sales aggregated by week"
+            icon={TrendingUp}
+            reportType="weekly_sales"
+            state={weeklySales}
+            setState={setWeeklySales}
+          />
+
+          <ReportSection
+            title="Monthly Sales Report"
+            description="Monthly sales aggregated by month"
+            icon={TrendingUp}
+            reportType="monthly_sales"
+            state={monthlySales}
+            setState={setMonthlySales}
+          />
+        </div>
+
+        {/* Product & User Reports - Side by Side */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <ReportSection
+            title="Product Wise Sales"
+            description="Sales breakdown by product"
+            icon={Package}
+            reportType="product_wise"
+            state={productWise}
+            setState={setProductWise}
+            showProductFilter={true}
+          />
+
+          <ReportSection
+            title="User Wise Sales"
+            description="Sales breakdown by user"
+            icon={Users}
+            reportType="user_wise"
+            state={userWise}
+            setState={setUserWise}
+            showUserFilter={true}
+          />
+        </div>
+
+        {/* Payment Method & Low Stock - Side by Side */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <ReportSection
+            title="Payment Method Wise"
+            description="Sales breakdown by payment method"
+            icon={CreditCard}
+            reportType="payment_method_wise"
+            state={paymentMethodWise}
+            setState={setPaymentMethodWise}
+          />
+
+          <ReportSection
+            title="Low Stock Report"
+            description="Products with low inventory levels"
+            icon={AlertTriangle}
+            reportType="low_stock"
+            state={lowStock}
+            setState={setLowStock}
+          />
+        </div>
       </div>
     </ProtectedPage>
   );
 }
-

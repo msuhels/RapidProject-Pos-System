@@ -16,7 +16,6 @@ interface SupplierFormProps {
 const STANDARD_FIELD_CONFIG = [
   { code: 'supplier_code', label: 'Supplier Code', type: 'text' as const, required: true },
   { code: 'supplier_name', label: 'Supplier Name', type: 'text' as const, required: true },
-  { code: 'contact_person', label: 'Contact Person', type: 'text' as const, required: false },
   { code: 'email', label: 'Email', type: 'email' as const, required: false },
   { code: 'phone', label: 'Phone', type: 'text' as const, required: false },
   { code: 'address', label: 'Address', type: 'textarea' as const, required: false },
@@ -89,8 +88,6 @@ export function SupplierForm({ form, onChange }: SupplierFormProps) {
               value = form.supplierCode ?? '';
             } else if (field.code === 'supplier_name') {
               value = form.supplierName ?? '';
-            } else if (field.code === 'contact_person') {
-              value = form.contactPerson ?? '';
             }
 
             const editable = isFieldEditable('supplier', field.code);
@@ -113,8 +110,6 @@ export function SupplierForm({ form, onChange }: SupplierFormProps) {
                         updateField('supplierCode', e.target.value);
                       } else if (field.code === 'supplier_name') {
                         updateField('supplierName', e.target.value);
-                      } else if (field.code === 'contact_person') {
-                        updateField('contactPerson', e.target.value);
                       } else if (field.code === 'phone') {
                         updateField('phone', e.target.value);
                       }

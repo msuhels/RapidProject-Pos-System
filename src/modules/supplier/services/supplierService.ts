@@ -86,7 +86,6 @@ export async function listSuppliers(
     tenantId: row.tenantId,
     supplierCode: row.supplierCode,
     supplierName: row.supplierName,
-    contactPerson: row.contactPerson,
     email: row.email,
     phone: row.phone,
     address: row.address,
@@ -120,7 +119,6 @@ export async function getSupplierById(
     tenantId: row.tenantId,
     supplierCode: row.supplierCode,
     supplierName: row.supplierName,
-    contactPerson: row.contactPerson,
     email: row.email,
     phone: row.phone,
     address: row.address,
@@ -142,7 +140,7 @@ export async function createSupplier(params: {
   const { data, tenantId, userId } = params;
 
   // Check for duplicate supplier code within tenant
-  const existing = await db
+  const existingCode = await db
     .select()
     .from(suppliers)
     .where(
@@ -154,8 +152,46 @@ export async function createSupplier(params: {
     )
     .limit(1);
 
-  if (existing.length > 0) {
+  if (existingCode.length > 0) {
     throw new Error('Supplier code already exists for this tenant');
+  }
+
+  // Check for duplicate email within tenant (if email is provided)
+  if (data.email && data.email.trim()) {
+    const existingEmail = await db
+      .select()
+      .from(suppliers)
+      .where(
+        and(
+          eq(suppliers.tenantId, tenantId),
+          eq(suppliers.email, data.email.trim()),
+          isNull(suppliers.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (existingEmail.length > 0) {
+      throw new Error('Email already exists for another supplier in this tenant');
+    }
+  }
+
+  // Check for duplicate phone within tenant (if phone is provided)
+  if (data.phone && data.phone.trim()) {
+    const existingPhone = await db
+      .select()
+      .from(suppliers)
+      .where(
+        and(
+          eq(suppliers.tenantId, tenantId),
+          eq(suppliers.phone, data.phone.trim()),
+          isNull(suppliers.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (existingPhone.length > 0) {
+      throw new Error('Phone number already exists for another supplier in this tenant');
+    }
   }
 
   const [newSupplier] = await db
@@ -164,9 +200,8 @@ export async function createSupplier(params: {
       tenantId,
       supplierCode: data.supplierCode,
       supplierName: data.supplierName,
-      contactPerson: data.contactPerson || null,
-      email: data.email || null,
-      phone: data.phone || null,
+      email: data.email?.trim() || null,
+      phone: data.phone?.trim() || null,
       address: data.address || null,
       status: data.status || 'active',
       customFields: data.customFields || {},
@@ -180,7 +215,6 @@ export async function createSupplier(params: {
     tenantId: newSupplier.tenantId,
     supplierCode: newSupplier.supplierCode,
     supplierName: newSupplier.supplierName,
-    contactPerson: newSupplier.contactPerson,
     email: newSupplier.email,
     phone: newSupplier.phone,
     address: newSupplier.address,
@@ -204,7 +238,7 @@ export async function updateSupplier(params: {
 
   // Check for duplicate supplier code if updating code
   if (data.supplierCode) {
-    const existing = await db
+    const existingCode = await db
       .select()
       .from(suppliers)
       .where(
@@ -216,8 +250,46 @@ export async function updateSupplier(params: {
       )
       .limit(1);
 
-    if (existing.length > 0 && existing[0].id !== id) {
+    if (existingCode.length > 0 && existingCode[0].id !== id) {
       throw new Error('Supplier code already exists for this tenant');
+    }
+  }
+
+  // Check for duplicate email if updating email (if email is provided)
+  if (data.email !== undefined && data.email && data.email.trim()) {
+    const existingEmail = await db
+      .select()
+      .from(suppliers)
+      .where(
+        and(
+          eq(suppliers.tenantId, tenantId),
+          eq(suppliers.email, data.email.trim()),
+          isNull(suppliers.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (existingEmail.length > 0 && existingEmail[0].id !== id) {
+      throw new Error('Email already exists for another supplier in this tenant');
+    }
+  }
+
+  // Check for duplicate phone if updating phone (if phone is provided)
+  if (data.phone !== undefined && data.phone && data.phone.trim()) {
+    const existingPhone = await db
+      .select()
+      .from(suppliers)
+      .where(
+        and(
+          eq(suppliers.tenantId, tenantId),
+          eq(suppliers.phone, data.phone.trim()),
+          isNull(suppliers.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (existingPhone.length > 0 && existingPhone[0].id !== id) {
+      throw new Error('Phone number already exists for another supplier in this tenant');
     }
   }
 
@@ -228,9 +300,8 @@ export async function updateSupplier(params: {
 
   if (data.supplierCode !== undefined) updateData.supplierCode = data.supplierCode;
   if (data.supplierName !== undefined) updateData.supplierName = data.supplierName;
-  if (data.contactPerson !== undefined) updateData.contactPerson = data.contactPerson || null;
-  if (data.email !== undefined) updateData.email = data.email || null;
-  if (data.phone !== undefined) updateData.phone = data.phone || null;
+  if (data.email !== undefined) updateData.email = data.email?.trim() || null;
+  if (data.phone !== undefined) updateData.phone = data.phone?.trim() || null;
   if (data.address !== undefined) updateData.address = data.address || null;
   if (data.status !== undefined) updateData.status = data.status;
   if (data.customFields !== undefined) {
@@ -264,7 +335,6 @@ export async function updateSupplier(params: {
     tenantId: updated.tenantId,
     supplierCode: updated.supplierCode,
     supplierName: updated.supplierName,
-    contactPerson: updated.contactPerson,
     email: updated.email,
     phone: updated.phone,
     address: updated.address,
