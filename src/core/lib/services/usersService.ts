@@ -233,6 +233,7 @@ export async function createUser(data: CreateUserInput, createdBy: string): Prom
   console.log('[createUser] User created in DB:', { id: newUser.id, email: newUser.email, tenantId: newUser.tenantId });
   
   // Assign default "USER" role if user has a tenant
+  let assignedRoleCode: string | null = null;
   if (newUser.tenantId) {
     console.log('[createUser] User has tenant, looking for default role');
     const { getDefaultUserRole } = await import('@/core/lib/roles');
@@ -250,12 +251,36 @@ export async function createUser(data: CreateUserInput, createdBy: string): Prom
         metadata: {},
       }).returning();
       
+      assignedRoleCode = defaultRole.code;
       console.log('[createUser] Role assigned successfully:', roleAssignment[0]?.id);
     } else {
       console.warn('[createUser] No default role found for tenant:', newUser.tenantId);
     }
   } else {
     console.warn('[createUser] User has no tenant, skipping role assignment');
+  }
+  
+  // Create customer record if user has "USER" role
+  if (assignedRoleCode === 'USER' && newUser.tenantId) {
+    try {
+      console.log('[createUser] Creating customer record for user with USER role');
+      const { createCustomer } = await import('@/modules/customer_management/services/customerService');
+      await createCustomer({
+        data: {
+          name: newUser.fullName || newUser.email || 'Customer',
+          email: newUser.email,
+          phoneNumber: newUser.phoneNumber || undefined,
+          isActive: true,
+        },
+        tenantId: newUser.tenantId,
+        userId: createdBy,
+        linkedUserId: newUser.id,
+      });
+      console.log('[createUser] Customer record created successfully');
+    } catch (error) {
+      console.error('[createUser] Failed to create customer record:', error);
+      // Don't fail user creation if customer creation fails
+    }
   }
   
   return newUser;

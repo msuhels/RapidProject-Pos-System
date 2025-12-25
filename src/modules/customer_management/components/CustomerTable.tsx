@@ -9,6 +9,8 @@ import {
   TableRow,
 } from '@/core/components/ui/table';
 import { TableActions } from '@/core/components/common/TableActions';
+import { Button } from '@/core/components/ui/button';
+import { History } from 'lucide-react';
 import { useFieldPermissions } from '@/core/hooks/useFieldPermissions';
 import { useCustomerCustomFields } from '../hooks/useCustomerCustomFields';
 import type { CustomerRecord } from '../types';
@@ -18,6 +20,7 @@ interface CustomerTableProps {
   loading?: boolean;
   onEdit?: (record: CustomerRecord) => void;
   onDelete?: (record: CustomerRecord) => void;
+  onViewSalesHistory?: (record: CustomerRecord) => void;
   showActions?: boolean;
 }
 
@@ -59,6 +62,7 @@ export function CustomerTable({
   loading = false,
   onEdit,
   onDelete,
+  onViewSalesHistory,
   showActions = true,
 }: CustomerTableProps) {
   const { isFieldVisible, loading: loadingPerms } = useFieldPermissions('customer_management');
@@ -122,7 +126,21 @@ export function CustomerTable({
               })}
               {showActions && (
                 <TableCell className="text-right">
-                  <TableActions item={record} onEdit={onEdit} onDelete={onDelete} />
+                  <div className="flex items-center justify-end gap-1">
+                    {onViewSalesHistory && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onViewSalesHistory(record)}
+                        title="View Sales/Order History"
+                        aria-label="View Sales/Order History"
+                        className="hover:bg-primary/10"
+                      >
+                        <History className="h-4 w-4 text-primary" />
+                      </Button>
+                    )}
+                    <TableActions item={record} onEdit={onEdit} onDelete={onDelete} />
+                  </div>
                 </TableCell>
               )}
             </TableRow>

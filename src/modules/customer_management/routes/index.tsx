@@ -15,6 +15,14 @@ import { useDebounce } from '@/core/hooks/useDebounce';
 import type { CustomerRecord, CreateCustomerInput } from '../types';
 import { CustomerForm } from '../components/CustomerForm';
 import { CustomerTable } from '../components/CustomerTable';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/core/components/ui/table';
 
 const defaultForm: CreateCustomerInput = {
   name: '',
@@ -35,6 +43,10 @@ export default function CustomersPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [salesHistoryDialogOpen, setSalesHistoryDialogOpen] = useState(false);
+  const [viewingCustomer, setViewingCustomer] = useState<CustomerRecord | null>(null);
+  const [salesHistory, setSalesHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingRecord, setDeletingRecord] = useState<CustomerRecord | null>(null);
   const [form, setForm] = useState<CreateCustomerInput>(defaultForm);
@@ -51,8 +63,9 @@ export default function CustomersPage() {
   const canDeactivate = hasPermission('customer_management:deactivate') || hasPermission('customer_management:*');
   const canExport = hasPermission('customer_management:export') || hasPermission('customer_management:*');
   const canImport = hasPermission('customer_management:import') || hasPermission('customer_management:*');
+  const canRead = hasPermission('customer_management:read') || hasPermission('customer_management:*');
 
-  const showActions = canUpdate || canDelete || canDeactivate;
+  const showActions = canUpdate || canDelete || canDeactivate || canRead;
 
   const fetchRecords = useCallback(async () => {
     setLoading(true);
@@ -84,6 +97,52 @@ export default function CustomersPage() {
   useEffect(() => {
     fetchRecords();
   }, [fetchRecords]);
+
+  // Automatically recalculate totals and cleanup duplicates on page load (only once per session)
+  useEffect(() => {
+    const autoFixKey = 'customer_management_auto_fix_done';
+    if (sessionStorage.getItem(autoFixKey)) {
+      return; // Already ran in this session
+    }
+
+    const autoFix = async () => {
+      if (!canUpdate) return;
+      
+      try {
+        // First cleanup duplicates (silent, no user notification)
+        const cleanupRes = await fetch('/api/customers/cleanup-duplicates', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        const cleanupJson = await cleanupRes.json();
+        if (cleanupRes.ok && cleanupJson.success && (cleanupJson.data.deleted > 0 || cleanupJson.data.merged > 0)) {
+          console.log('[Auto-fix] Cleaned duplicates:', cleanupJson.data);
+        }
+
+        // Then recalculate totals (silent, no user notification)
+        const recalcRes = await fetch('/api/customers/recalculate-totals', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        const recalcJson = await recalcRes.json();
+        if (recalcRes.ok && recalcJson.success) {
+          console.log('[Auto-fix] Recalculated totals:', recalcJson.data);
+          // Refresh records to show updated totals
+          setTimeout(() => fetchRecords(), 500);
+        }
+
+        // Mark as done for this session
+        sessionStorage.setItem(autoFixKey, 'true');
+      } catch (error) {
+        console.error('[Auto-fix] Error (non-critical):', error);
+        // Don't show error to user, this is background operation
+      }
+    };
+
+    // Run auto-fix once after initial load (wait for records to load first)
+    const timer = setTimeout(autoFix, 3000); // Wait 3 seconds after page load
+    return () => clearTimeout(timer);
+  }, [canUpdate, fetchRecords]);
 
   const resetForm = () => {
     setForm(defaultForm);
@@ -290,6 +349,29 @@ export default function CustomersPage() {
 
   const hasActiveFilters = search || isActiveFilter !== 'all' || hasOutstandingBalanceFilter !== 'all';
 
+  const openSalesHistory = async (record: CustomerRecord) => {
+    setViewingCustomer(record);
+    setSalesHistoryDialogOpen(true);
+    setLoadingHistory(true);
+    setSalesHistory([]);
+
+    try {
+      const res = await fetch(`/api/customers/sales-history?customerId=${record.id}`);
+      const json = await res.json();
+
+      if (res.ok && json.success) {
+        setSalesHistory(json.data || []);
+      } else {
+        toast.error(json.error || 'Failed to load sales history');
+      }
+    } catch (error) {
+      console.error('Sales history fetch error:', error);
+      toast.error('Failed to load sales history');
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
   return (
     <ProtectedPage
       permission="customer_management:read"
@@ -373,7 +455,8 @@ export default function CustomersPage() {
                 records={records}
                 onEdit={canUpdate ? openEdit : undefined}
                 onDelete={(canDelete || canDeactivate) ? openDelete : undefined}
-                showActions={showActions}
+                onViewSalesHistory={openSalesHistory}
+                showActions={true}
               />
             )}
           </CardContent>
@@ -456,6 +539,69 @@ export default function CustomersPage() {
               </Button>
               <Button onClick={handleImport} disabled={importing}>
                 {importing ? 'Importing...' : 'Import'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={salesHistoryDialogOpen} onOpenChange={setSalesHistoryDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                Sales History - {viewingCustomer?.name || 'Customer'}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              {loadingHistory ? (
+                <div className="flex items-center justify-center py-12">
+                  <LoadingSpinner />
+                </div>
+              ) : salesHistory.length === 0 ? (
+                <div className="py-8 text-center text-muted-foreground">
+                  No sales history found for this customer.
+                </div>
+              ) : (
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Order Date</TableHead>
+                        <TableHead>Products</TableHead>
+                        <TableHead className="text-right">Total Amount</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {salesHistory.map((order) => (
+                        <TableRow key={order.id}>
+                          <TableCell>
+                            {new Date(order.orderDate).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-1">
+                              {order.products?.map((product: any, idx: number) => (
+                                <div key={idx} className="text-sm">
+                                  <span className="font-medium">{product.productName || product.productId}</span>
+                                  {' - '}
+                                  Qty: {product.quantity} @ ${product.price}
+                                  {' = '}
+                                  <span className="font-semibold">${(parseFloat(product.price || '0') * parseFloat(product.quantity || '0')).toFixed(2)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            ${order.totalAmount || '0.00'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setSalesHistoryDialogOpen(false)}>
+                Close
               </Button>
             </DialogFooter>
           </DialogContent>
