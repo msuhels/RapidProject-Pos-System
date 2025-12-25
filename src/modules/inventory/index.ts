@@ -7,3 +7,4 @@ export * from './services/inventoryService';
 export * from './config/fields.config';
 export * from './config/permissions.config';
 
+

@@ -16,3 +16,4 @@ export default async function seedInventoryModule(db?: any) {
   console.log('ℹ️  Inventory module fields are registered in main seed script');
 }
 
+

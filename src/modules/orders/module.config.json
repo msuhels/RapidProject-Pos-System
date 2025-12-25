@@ -1,0 +1,50 @@
+{
+  "id": "orders",
+  "name": "Orders",
+  "version": "1.0.0",
+  "description": "Manage customer orders - track purchases, order dates, and product details",
+  "enabled": true,
+  "routes": [
+    {
+      "path": "/orders",
+      "component": "index",
+      "title": "Order History",
+      "requiresAuth": true
+    }
+  ],
+  "api": {
+    "basePath": "/api/orders",
+    "endpoints": [
+      { "method": "GET", "path": "", "handler": "list", "requiresAuth": true },
+      { "method": "POST", "path": "", "handler": "create", "requiresAuth": true },
+      { "method": "GET", "path": "/:id", "handler": "getById", "requiresAuth": true },
+      { "method": "PATCH", "path": "/:id", "handler": "update", "requiresAuth": true },
+      { "method": "DELETE", "path": "/:id", "handler": "delete", "requiresAuth": true },
+      { "method": "POST", "path": "/:id/duplicate", "handler": "duplicate", "requiresAuth": true },
+      { "method": "POST", "path": "/import", "handler": "import", "requiresAuth": true },
+      { "method": "GET", "path": "/export", "handler": "export", "requiresAuth": true }
+    ]
+  },
+  "navigation": {
+    "label": "Order History",
+    "icon": "MdOutlineInventory2",
+    "path": "/orders",
+    "order": 8
+  },
+  "permissions": {
+    "create": "orders:create",
+    "read": "orders:read",
+    "update": "orders:update",
+    "delete": "orders:delete",
+    "export": "orders:export",
+    "import": "orders:import",
+    "duplicate": "orders:duplicate",
+    "manage_labels": "orders:manage_labels",
+    "manage": "orders:*"
+  },
+  "fields": {
+    "enabled": true,
+    "configPath": "./config/fields.config.ts"
+  }
+}
+

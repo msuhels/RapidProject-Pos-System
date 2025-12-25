@@ -206,3 +206,4 @@ export function InventoryLabelsDialog({ open, onOpenChange }: InventoryLabelsDia
   );
 }
 
+

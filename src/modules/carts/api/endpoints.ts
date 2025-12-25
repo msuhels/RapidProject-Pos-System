@@ -7,7 +7,9 @@ export const cartEndpoints = {
   update: { method: 'PATCH', path: '/api/carts/:id', handler: 'update' },
   delete: { method: 'DELETE', path: '/api/carts/:id', handler: 'delete' },
   duplicate: { method: 'POST', path: '/api/carts/:id/duplicate', handler: 'duplicate' },
+  checkout: { method: 'POST', path: '/api/carts/checkout', handler: 'checkout' },
   import: { method: 'POST', path: '/api/carts/import', handler: 'import' },
   export: { method: 'GET', path: '/api/carts/export', handler: 'export' },
 };
+
 
