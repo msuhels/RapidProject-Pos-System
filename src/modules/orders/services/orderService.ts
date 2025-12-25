@@ -1,7 +1,8 @@
-import { and, desc, eq, ilike, isNull, or, gte, lte } from 'drizzle-orm';
+import { and, desc, eq, ilike, isNull, or, gte, lte, inArray } from 'drizzle-orm';
 import { db } from '@/core/lib/db';
 import { orders } from '../schemas/ordersSchema';
 import { products } from '../../products/schemas/productsSchema';
+import { users } from '@/core/lib/db/baseSchema';
 import { decreaseProductQuantity } from '../../products/services/productService';
 import type { Order, CreateOrderInput, UpdateOrderInput, OrderListFilters } from '../types';
 
@@ -29,46 +30,191 @@ export async function listOrdersForTenant(
       or(
         ilike(orders.userId, searchTerm),
         ilike(orders.totalAmount, searchTerm),
+        ilike(users.fullName, searchTerm),
+        ilike(users.email, searchTerm),
       )!,
     );
   }
 
+  // Join with users table to get user name and email
   const results = await db
-    .select()
+    .select({
+      // Order fields
+      id: orders.id,
+      tenantId: orders.tenantId,
+      userId: orders.userId,
+      orderDate: orders.orderDate,
+      products: orders.products,
+      totalAmount: orders.totalAmount,
+      labelIds: orders.labelIds,
+      createdAt: orders.createdAt,
+      updatedAt: orders.updatedAt,
+      createdBy: orders.createdBy,
+      updatedBy: orders.updatedBy,
+      deletedAt: orders.deletedAt,
+      // User fields
+      userName: users.fullName,
+      userEmail: users.email,
+    })
     .from(orders)
+    .leftJoin(users, eq(orders.userId, users.id))
     .where(and(...conditions))
     .orderBy(desc(orders.orderDate));
 
-  return results.map((r) => ({
-    ...r,
-    labelIds: (r.labelIds as string[]) || [],
-    products: (r.products as any[]) || [],
-    totalAmount: r.totalAmount || null,
-    orderDate: r.orderDate.toISOString(),
-    createdAt: r.createdAt.toISOString(),
-    updatedAt: r.updatedAt.toISOString(),
-    createdBy: r.createdBy || null,
-    updatedBy: r.updatedBy || null,
-    deletedAt: r.deletedAt?.toISOString() || null,
-  }));
+  // Get all unique product IDs from all orders
+  const allProductIds = new Set<string>();
+  results.forEach((r) => {
+    const orderProducts = (r.products as any[]) || [];
+    orderProducts.forEach((p) => {
+      if (p.productId && typeof p.productId === 'string') {
+        allProductIds.add(p.productId);
+      }
+    });
+  });
+
+  // Fetch all products in one query - filter by the product IDs from orders
+  const productMap = new Map<string, { name: string }>();
+  if (allProductIds.size > 0) {
+    const productList = Array.from(allProductIds);
+    try {
+      const productResults = await db
+        .select({
+          id: products.id,
+          name: products.name,
+        })
+        .from(products)
+        .where(
+          and(
+            eq(products.tenantId, tenantId),
+            isNull(products.deletedAt),
+            inArray(products.id, productList),
+          ),
+        );
+
+      productResults.forEach((p) => {
+        if (p.id && p.name) {
+          productMap.set(p.id, { name: p.name });
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching products for orders:', error);
+    }
+  }
+
+  // Map results and enrich products with names
+  return results.map((r) => {
+    const orderProducts = ((r.products as any[]) || []).map((p) => {
+      // Use stored productName if available, otherwise fetch from map
+      const productId = p.productId;
+      const storedName = p.productName;
+      const fetchedName = productId ? productMap.get(productId)?.name : null;
+      return {
+        ...p,
+        productName: storedName || fetchedName || 'Unknown Product',
+      };
+    });
+
+    return {
+      id: r.id,
+      tenantId: r.tenantId,
+      userId: r.userId,
+      userName: r.userName || null,
+      userEmail: r.userEmail || null,
+      orderDate: r.orderDate.toISOString(),
+      products: orderProducts,
+      totalAmount: r.totalAmount || null,
+      labelIds: (r.labelIds as string[]) || [],
+      createdAt: r.createdAt.toISOString(),
+      updatedAt: r.updatedAt.toISOString(),
+      createdBy: r.createdBy || null,
+      updatedBy: r.updatedBy || null,
+      deletedAt: r.deletedAt?.toISOString() || null,
+    };
+  });
 }
 
 export async function getOrderById(id: string, tenantId: string): Promise<Order | null> {
   const result = await db
-    .select()
+    .select({
+      // Order fields
+      id: orders.id,
+      tenantId: orders.tenantId,
+      userId: orders.userId,
+      orderDate: orders.orderDate,
+      products: orders.products,
+      totalAmount: orders.totalAmount,
+      labelIds: orders.labelIds,
+      createdAt: orders.createdAt,
+      updatedAt: orders.updatedAt,
+      createdBy: orders.createdBy,
+      updatedBy: orders.updatedBy,
+      deletedAt: orders.deletedAt,
+      // User fields
+      userName: users.fullName,
+      userEmail: users.email,
+    })
     .from(orders)
+    .leftJoin(users, eq(orders.userId, users.id))
     .where(and(eq(orders.id, id), eq(orders.tenantId, tenantId), isNull(orders.deletedAt)))
     .limit(1);
 
   if (result.length === 0) return null;
 
   const r = result[0];
+  const orderProducts = (r.products as any[]) || [];
+
+  // Fetch product names
+  const productIds = orderProducts
+    .map((p) => p.productId)
+    .filter((id): id is string => Boolean(id) && typeof id === 'string');
+  const productMap = new Map<string, { name: string }>();
+  if (productIds.length > 0) {
+    try {
+      const productResults = await db
+        .select({
+          id: products.id,
+          name: products.name,
+        })
+        .from(products)
+        .where(
+          and(
+            eq(products.tenantId, tenantId),
+            isNull(products.deletedAt),
+            inArray(products.id, productIds),
+          ),
+        );
+
+      productResults.forEach((p) => {
+        if (p.id && p.name) {
+          productMap.set(p.id, { name: p.name });
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching products for order:', error);
+    }
+  }
+
+  const enrichedProducts = orderProducts.map((p) => {
+    // Use stored productName if available, otherwise fetch from map
+    const productId = p.productId;
+    const storedName = p.productName;
+    const fetchedName = productId ? productMap.get(productId)?.name : null;
+    return {
+      ...p,
+      productName: storedName || fetchedName || 'Unknown Product',
+    };
+  });
+
   return {
-    ...r,
-    labelIds: (r.labelIds as string[]) || [],
-    products: (r.products as any[]) || [],
-    totalAmount: r.totalAmount || null,
+    id: r.id,
+    tenantId: r.tenantId,
+    userId: r.userId,
+    userName: r.userName || null,
+    userEmail: r.userEmail || null,
     orderDate: r.orderDate.toISOString(),
+    products: enrichedProducts,
+    totalAmount: r.totalAmount || null,
+    labelIds: (r.labelIds as string[]) || [],
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
     createdBy: r.createdBy || null,
@@ -86,6 +232,7 @@ export async function createOrder(params: {
 
   // Validate products and calculate total amount
   let totalAmount = 0;
+  const enrichedProducts = [];
   for (const product of data.products) {
     // Verify product exists and has sufficient stock
     const productResult = await db
@@ -116,9 +263,15 @@ export async function createOrder(params: {
     // Calculate total
     const price = parseFloat(product.price) || 0;
     totalAmount += price * requestedQuantity;
+
+    // Store product name with the product data
+    enrichedProducts.push({
+      ...product,
+      productName: productData.name,
+    });
   }
 
-  // Create order record
+  // Create order record with enriched products (including product names)
   const orderDate = data.orderDate ? new Date(data.orderDate) : new Date();
   const [orderResult] = await db
     .insert(orders)
@@ -126,7 +279,7 @@ export async function createOrder(params: {
       tenantId,
       userId: data.userId,
       orderDate,
-      products: data.products,
+      products: enrichedProducts, // Store products with names
       totalAmount: totalAmount.toFixed(2),
       labelIds: data.labelIds || [],
       createdBy: userId,
@@ -140,10 +293,16 @@ export async function createOrder(params: {
     await decreaseProductQuantity(product.productId, tenantId, requestedQuantity, userId);
   }
 
+  // Products already have names from enrichedProducts
+  const orderProducts = (orderResult.products as any[]) || [];
+
   return {
     ...orderResult,
     labelIds: (orderResult.labelIds as string[]) || [],
-    products: (orderResult.products as any[]) || [],
+    products: orderProducts.map((p) => ({
+      ...p,
+      productName: p.productName || 'Unknown Product',
+    })),
     totalAmount: orderResult.totalAmount || null,
     orderDate: orderResult.orderDate.toISOString(),
     createdAt: orderResult.createdAt.toISOString(),
