@@ -14,11 +14,19 @@ export async function listInventoryForTenant(
     category: filters.productId ? undefined : undefined, // We can filter by category if needed
   };
 
-  return listProductsForTenant(tenantId, productFilters);
+  // Inventory module should show ALL products including out of stock
+  // Pass showAllProducts=true to bypass the out-of-stock filter
+  return listProductsForTenant(tenantId, productFilters, undefined, true);
 }
 
-export async function getInventoryById(id: string, tenantId: string): Promise<Product | null> {
-  return getProductById(id, tenantId);
+export async function getInventoryById(
+  id: string,
+  tenantId: string,
+  currentUserId?: string,
+): Promise<Product | null> {
+  // Inventory module should show ALL products including out of stock
+  // Pass showAllProducts=true to bypass the out-of-stock filter
+  return getProductById(id, tenantId, currentUserId, true);
 }
 
 export async function updateInventoryItem(params: {
@@ -34,7 +42,9 @@ export async function updateInventoryItem(params: {
 }): Promise<Product | null> {
   const { id, tenantId, userId, data } = params;
 
-  const existing = await getProductById(id, tenantId);
+  // Inventory module should show ALL products including out of stock
+  // Pass showAllProducts=true to bypass the out-of-stock filter
+  const existing = await getProductById(id, tenantId, userId, true);
   if (!existing) return null;
 
   return updateProduct({

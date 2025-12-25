@@ -20,7 +20,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: 'Tenant not found for user' }, { status: 400 });
     }
 
-    const record = await getProductById(params.id, tenantId);
+    const record = await getProductById(params.id, tenantId, userId);
 
     if (!record) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });

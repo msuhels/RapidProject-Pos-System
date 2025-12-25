@@ -56,7 +56,12 @@ export default function ProductsPage() {
   const canImport = hasPermission('products:import') || hasPermission('products:*');
   const canDuplicate = hasPermission('products:duplicate') || hasPermission('products:*');
   const canManageLabels = hasPermission('products:manage_labels') || hasPermission('products:*');
-  const canAddToCart = hasPermission('carts:create') || hasPermission('carts:*');
+  
+  // Check if user is Super Admin (has admin:* permission)
+  const isSuperAdmin = hasPermission('admin:*');
+  
+  // Add to Cart button should NOT show for Super Admin users
+  const canAddToCart = !isSuperAdmin && (hasPermission('carts:create') || hasPermission('carts:*'));
 
   const showActions = canUpdate || canDelete || canDuplicate;
 
