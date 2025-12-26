@@ -8,6 +8,8 @@ export interface Product {
   taxRate: string | null;
   quantity: string;
   minimumStockQuantity: string | null;
+  supplierId: string | null;
+  supplierName?: string | null;
   image: string | null;
   category: string | null;
   sku: string | null;
@@ -33,12 +35,12 @@ export interface CreateProductInput {
   discountType?: 'percentage' | 'amount';
   discountValue?: string;
   quantity: string;
-  minimumStockQuantity?: string;
+  minimumStockQuantity: string;
+  supplierId?: string;
   image?: string;
   category?: string;
   sku?: string;
   location?: string;
-  status?: string;
   labelIds?: string[];
 }
 
@@ -52,11 +54,11 @@ export interface UpdateProductInput {
   discountValue?: string;
   quantity?: string;
   minimumStockQuantity?: string;
+  supplierId?: string;
   image?: string;
   category?: string;
   sku?: string;
   location?: string;
-  status?: string;
   labelIds?: string[];
 }
 

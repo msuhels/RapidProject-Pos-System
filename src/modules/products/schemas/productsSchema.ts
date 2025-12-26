@@ -1,5 +1,6 @@
 import { pgTable, uuid, varchar, text, timestamp, jsonb, index } from 'drizzle-orm/pg-core';
 import { tenants } from '@/core/lib/db/baseSchema';
+import { suppliers } from '@/modules/supplier/schemas/supplierSchema';
 
 export const products = pgTable(
   'products',
@@ -15,6 +16,7 @@ export const products = pgTable(
     discountValue: varchar('discount_value', { length: 50 }),
     quantity: varchar('quantity', { length: 50 }).notNull(),
     minimumStockQuantity: varchar('minimum_stock_quantity', { length: 50 }),
+    supplierId: uuid('supplier_id').references(() => suppliers.id, { onDelete: 'set null' }),
     image: text('image'),
     category: varchar('category', { length: 100 }),
     sku: varchar('sku', { length: 100 }),
@@ -34,6 +36,7 @@ export const products = pgTable(
     nameIdx: index('idx_products_name').on(table.name),
     statusIdx: index('idx_products_status').on(table.status),
     locationIdx: index('idx_products_location').on(table.location),
+    supplierIdx: index('idx_products_supplier').on(table.supplierId),
   }),
 );
 
