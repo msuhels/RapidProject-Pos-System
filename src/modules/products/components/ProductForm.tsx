@@ -1,11 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Input } from '@/core/components/ui/input';
 import { Label } from '@/core/components/ui/label';
 import { Select } from '@/core/components/ui/select';
 import { useFieldPermissions } from '@/core/hooks/useFieldPermissions';
-import { Info, DollarSign, Percent, Package, Tag, Image as ImageIcon, MapPin } from 'lucide-react';
+import { Info, DollarSign, Percent, Package, Tag, Image as ImageIcon, MapPin, Truck } from 'lucide-react';
 import type { CreateProductInput } from '../types';
 
 interface ProductFormProps {
@@ -13,32 +13,52 @@ interface ProductFormProps {
   onChange: (form: CreateProductInput) => void;
 }
 
-const STATUS_OPTIONS = [
-  { value: 'in_stock', label: 'In Stock' },
-  { value: 'low_stock', label: 'Low Stock' },
-  { value: 'out_of_stock', label: 'Out of Stock' },
-];
+interface Supplier {
+  id: string;
+  supplierName: string;
+}
 
 const STANDARD_FIELD_CONFIG = [
   { code: 'name', label: 'Product Name', type: 'text' as const },
-  { code: 'price', label: 'Base Price', type: 'number' as const },
+  { code: 'price', label: 'Actual Price', type: 'number' as const },
   { code: 'discountType', label: 'Discount Type', type: 'select' as const },
   { code: 'discountValue', label: 'Discount Value', type: 'number' as const },
   { code: 'taxRate', label: 'Tax Rate (%)', type: 'number' as const },
   { code: 'costPrice', label: 'Cost Price', type: 'number' as const },
-  { code: 'sellingPrice', label: 'Selling Price', type: 'number' as const },
+  { code: 'sellingPrice', label: 'Final Price', type: 'number' as const },
   { code: 'quantity', label: 'Current Stock Quantity', type: 'number' as const },
-  { code: 'minimumStockQuantity', label: 'Minimum Stock Quantity', type: 'number' as const },
+  { code: 'minimumStockQuantity', label: 'Minimum Stock Quantity (MSQ)', type: 'number' as const },
+  { code: 'supplierId', label: 'Supplier', type: 'select' as const },
   { code: 'image', label: 'Image URL', type: 'url' as const },
   { code: 'category', label: 'Category', type: 'text' as const },
   { code: 'sku', label: 'SKU / Barcode', type: 'text' as const },
   { code: 'location', label: 'Location', type: 'text' as const },
-  { code: 'status', label: 'Status', type: 'select' as const },
 ] as const;
 
 export function ProductForm({ form, onChange }: ProductFormProps) {
   const { isFieldVisible, isFieldEditable, loading: loadingPerms } =
     useFieldPermissions('products');
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [loadingSuppliers, setLoadingSuppliers] = useState(false);
+
+  // Fetch active suppliers
+  useEffect(() => {
+    const fetchSuppliers = async () => {
+      setLoadingSuppliers(true);
+      try {
+        const res = await fetch('/api/suppliers?status=active');
+        const json = await res.json();
+        if (res.ok && json.success) {
+          setSuppliers(json.data || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch suppliers:', error);
+      } finally {
+        setLoadingSuppliers(false);
+      }
+    };
+    fetchSuppliers();
+  }, []);
 
   const calculateSellingPrice = (
     price: string,
@@ -122,23 +142,61 @@ export function ProductForm({ form, onChange }: ProductFormProps) {
     );
   }
 
-  const visibleFields = STANDARD_FIELD_CONFIG.filter((field) =>
-    isFieldVisible('products', field.code),
-  );
+  // Always include MSQ, supplierId, and discount fields even if permissions hide them (they're required/important)
+  const visibleFields = STANDARD_FIELD_CONFIG.filter((field) => {
+    // Always show MSQ, supplierId, and discount fields
+    if (field.code === 'minimumStockQuantity' || 
+        field.code === 'supplierId' || 
+        field.code === 'discountType' || 
+        field.code === 'discountValue') {
+      return true;
+    }
+    return isFieldVisible('products', field.code);
+  });
 
   // Group fields into logical sections
   const pricingFields = ['price', 'discountType', 'discountValue', 'taxRate', 'costPrice', 'sellingPrice'];
-  const inventoryFields = ['quantity', 'minimumStockQuantity', 'status'];
+  const inventoryFields = ['quantity', 'minimumStockQuantity', 'supplierId'];
   const otherFields = visibleFields.filter(f => 
     !pricingFields.includes(f.code) && !inventoryFields.includes(f.code)
   );
   
+  // Ensure discount fields are always included in pricing fields, even if not in visibleFields
   const pricingFieldsOrdered = pricingFields
-    .map(code => visibleFields.find(f => f.code === code))
+    .map(code => {
+      const found = visibleFields.find(f => f.code === code);
+      if (found) return found;
+      // If not found in visibleFields, get from STANDARD_FIELD_CONFIG (for discount fields and other pricing fields)
+      const fromConfig = STANDARD_FIELD_CONFIG.find(f => f.code === code);
+      if (fromConfig) return fromConfig;
+      return null;
+    })
     .filter(Boolean) as typeof visibleFields;
   
+  // Double-check discount fields are included - add them if missing
+  const hasDiscountType = pricingFieldsOrdered.some(f => f.code === 'discountType');
+  const hasDiscountValue = pricingFieldsOrdered.some(f => f.code === 'discountValue');
+  
+  if (!hasDiscountType) {
+    const discountTypeField = STANDARD_FIELD_CONFIG.find(f => f.code === 'discountType');
+    if (discountTypeField) pricingFieldsOrdered.push(discountTypeField);
+  }
+  if (!hasDiscountValue) {
+    const discountValueField = STANDARD_FIELD_CONFIG.find(f => f.code === 'discountValue');
+    if (discountValueField) pricingFieldsOrdered.push(discountValueField);
+  }
+  
+  // Ensure MSQ and supplierId are always included in inventory fields, even if not in visibleFields
   const inventoryFieldsOrdered = inventoryFields
-    .map(code => visibleFields.find(f => f.code === code))
+    .map(code => {
+      const found = visibleFields.find(f => f.code === code);
+      if (found) return found;
+      // If not found in visibleFields, get from STANDARD_FIELD_CONFIG (for MSQ and supplierId)
+      if (code === 'minimumStockQuantity' || code === 'supplierId') {
+        return STANDARD_FIELD_CONFIG.find(f => f.code === code);
+      }
+      return null;
+    })
     .filter(Boolean) as typeof visibleFields;
 
   return (
@@ -191,10 +249,13 @@ export function ProductForm({ form, onChange }: ProductFormProps) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {pricingFieldsOrdered.map((field) => {
           const value = (form as any)[field.code] ?? '';
-          const editable = isFieldEditable('products', field.code);
+          // Always allow editing discount fields regardless of permissions
+          const editable = (field.code === 'discountType' || field.code === 'discountValue') 
+            ? true 
+            : isFieldEditable('products', field.code);
 
           if (field.code === 'sellingPrice') {
-            // Selling price is calculated, so make it read-only
+            // Final price is calculated, so make it read-only
             const price = parseFloat(form.price || '0') || 0;
             const taxRate = parseFloat(form.taxRate || '0') || 0;
             const discountValue = parseFloat(form.discountValue || '0') || 0;
@@ -218,45 +279,11 @@ export function ProductForm({ form, onChange }: ProductFormProps) {
                     Auto-calculated
                   </span>
                 </Label>
-                <div className="mt-2 p-5 bg-gradient-to-br from-primary/5 to-primary/10 rounded-xl border-2 border-primary/30 shadow-sm">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Final Selling Price</p>
-                      <span className="text-3xl font-bold text-primary">${value ? parseFloat(value).toFixed(2) : '0.00'}</span>
-                    </div>
-                    <div className="p-3 rounded-lg bg-background/80 border border-primary/20">
-                      <Package className="h-5 w-5 text-primary" />
-                    </div>
+                <div className="mt-2 p-4 bg-muted/30 rounded-lg border border-border">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Final Price:</span>
+                    <span className="text-xl font-bold text-foreground">${value ? parseFloat(value).toFixed(2) : '0.00'}</span>
                   </div>
-                  {(price > 0 || discountValue > 0 || taxRate > 0) && (
-                    <div className="space-y-2.5 pt-4 border-t border-border/50">
-                      <div className="flex justify-between items-center text-sm py-1.5 px-2 rounded bg-background/50">
-                        <span className="text-muted-foreground flex items-center gap-1.5">
-                          <DollarSign className="h-3.5 w-3.5" />
-                          Base Price
-                        </span>
-                        <span className="font-semibold">${price.toFixed(2)}</span>
-                      </div>
-                      {discountValue > 0 && (
-                        <div className="flex justify-between items-center text-sm py-1.5 px-2 rounded bg-red-50 dark:bg-red-950/20">
-                          <span className="text-muted-foreground flex items-center gap-1.5">
-                            <Percent className="h-3.5 w-3.5" />
-                            Discount ({discountType === 'percentage' ? `${discountValue}%` : `$${discountValue.toFixed(2)}`})
-                          </span>
-                          <span className="text-red-600 dark:text-red-400 font-semibold">-${discountAmount.toFixed(2)}</span>
-                        </div>
-                      )}
-                      {taxRate > 0 && (
-                        <div className="flex justify-between items-center text-sm py-1.5 px-2 rounded bg-green-50 dark:bg-green-950/20">
-                          <span className="text-muted-foreground flex items-center gap-1.5">
-                            <Percent className="h-3.5 w-3.5" />
-                            Tax ({taxRate}%)
-                          </span>
-                          <span className="text-green-600 dark:text-green-400 font-semibold">+${taxAmount.toFixed(2)}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
               </div>
             );
@@ -271,9 +298,10 @@ export function ProductForm({ form, onChange }: ProductFormProps) {
                 </Label>
                 <Select
                   value={value || 'amount'}
-                  onChange={(e) =>
-                    updateField(field.code as keyof CreateProductInput, e.target.value as any)
-                  }
+                  onChange={(e) => {
+                    const newValue = e.target.value as 'amount' | 'percentage';
+                    updateField(field.code as keyof CreateProductInput, newValue);
+                  }}
                   options={[
                     { label: 'Fixed Amount ($)', value: 'amount' },
                     { label: 'Percentage (%)', value: 'percentage' }
@@ -282,13 +310,14 @@ export function ProductForm({ form, onChange }: ProductFormProps) {
                   className="w-full"
                 />
                 <p className="text-xs text-muted-foreground mt-1.5">
-                  Choose how to apply the discount
+                  Choose how to apply the discount - Fixed Amount or Percentage
                 </p>
               </div>
             );
           }
 
           if (field.code === 'discountValue') {
+            const maxValue = form.discountType === 'percentage' ? 100 : undefined;
             return (
               <div key={field.code}>
                 <Label className="text-sm font-medium mb-2 block">
@@ -307,17 +336,41 @@ export function ProductForm({ form, onChange }: ProductFormProps) {
                   )}
                   <Input
                     type="number"
-                    step="0.01"
+                    step={form.discountType === 'percentage' ? '0.1' : '0.01'}
                     min="0"
+                    max={maxValue}
                     value={value}
-                    onChange={(e) =>
-                      updateField(field.code as keyof CreateProductInput, e.target.value)
-                    }
+                    onChange={(e) => {
+                      const inputValue = e.target.value;
+                      // Allow empty input for clearing
+                      if (inputValue === '') {
+                        updateField(field.code as keyof CreateProductInput, '');
+                        return;
+                      }
+                      // Validate percentage doesn't exceed 100
+                      if (form.discountType === 'percentage') {
+                        const numValue = parseFloat(inputValue);
+                        if (!isNaN(numValue) && numValue <= 100) {
+                          updateField(field.code as keyof CreateProductInput, inputValue);
+                        }
+                      } else {
+                        updateField(field.code as keyof CreateProductInput, inputValue);
+                      }
+                    }}
                     disabled={!editable}
-                    placeholder="0.00"
-                    className={form.discountType === 'percentage' ? 'pl-9' : 'pl-9'}
+                    placeholder={form.discountType === 'percentage' ? '0.0' : '0.00'}
+                    className="pl-9"
                   />
                 </div>
+                {form.discountType === 'percentage' ? (
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    Enter discount percentage (0-100%)
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    Enter discount amount in dollars
+                  </p>
+                )}
                 {form.discountType === 'percentage' && parseFloat(value || '0') > 100 && (
                   <p className="text-xs text-amber-600 mt-1.5">Discount cannot exceed 100%</p>
                 )}
@@ -421,27 +474,15 @@ export function ProductForm({ form, onChange }: ProductFormProps) {
                   <span className="text-xs text-muted-foreground ml-2">(Read-only)</span>
                 )}
               </Label>
-              {field.type === 'select' && field.code === 'status' ? (
-                <Select
-                  value={value || 'in_stock'}
-                  onChange={(e) =>
-                    updateField(field.code as keyof CreateProductInput, e.target.value)
-                  }
-                  options={STATUS_OPTIONS}
-                  disabled={!editable}
-                  className="w-full"
-                />
-              ) : (
-                <Input
-                  type={field.type === 'url' ? 'url' : 'text'}
-                  value={value}
-                  onChange={(e) =>
-                    updateField(field.code as keyof CreateProductInput, e.target.value)
-                  }
-                  disabled={!editable}
-                  placeholder={field.label}
-                />
-              )}
+              <Input
+                type={field.type === 'url' ? 'url' : 'text'}
+                value={value}
+                onChange={(e) =>
+                  updateField(field.code as keyof CreateProductInput, e.target.value)
+                }
+                disabled={!editable}
+                placeholder={field.label}
+              />
             </div>
           );
           })}
@@ -463,7 +504,10 @@ export function ProductForm({ form, onChange }: ProductFormProps) {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {inventoryFieldsOrdered.map((field) => {
               const value = (form as any)[field.code] ?? '';
-              const editable = isFieldEditable('products', field.code);
+              // Always allow editing MSQ and supplier fields regardless of permissions
+              const editable = (field.code === 'minimumStockQuantity' || field.code === 'supplierId')
+                ? true
+                : isFieldEditable('products', field.code);
 
               if (field.code === 'minimumStockQuantity') {
                 const currentQty = parseFloat(form.quantity || '0');
@@ -479,16 +523,22 @@ export function ProductForm({ form, onChange }: ProductFormProps) {
                     <Input
                       type="number"
                       min="0"
+                      step="1"
+                      required
                       value={value}
-                      onChange={(e) =>
-                        updateField(field.code as keyof CreateProductInput, e.target.value)
-                      }
+                      onChange={(e) => {
+                        const inputValue = e.target.value;
+                        // Allow empty input for clearing, but validate it's a number
+                        if (inputValue === '' || (!isNaN(parseFloat(inputValue)) && parseFloat(inputValue) >= 0)) {
+                          updateField(field.code as keyof CreateProductInput, inputValue);
+                        }
+                      }}
                       disabled={!editable}
-                      placeholder="10"
+                      placeholder="Enter minimum stock quantity"
                       className={isLowStock ? 'border-amber-300 focus:border-amber-400' : ''}
                     />
                     <p className="text-xs text-muted-foreground mt-1.5">
-                      Alert when stock falls below this level
+                      <span className="font-semibold text-foreground">Required:</span> Enter the minimum stock quantity manually. Alert when stock falls below this level
                     </p>
                     {isLowStock && (
                       <p className="text-xs text-amber-600 mt-1.5 flex items-center gap-1">
@@ -502,7 +552,7 @@ export function ProductForm({ form, onChange }: ProductFormProps) {
 
               if (field.code === 'quantity') {
                 const currentQty = parseFloat(value || '0');
-                const minQty = parseFloat(form.minimumStockQuantity || '10');
+                const minQty = parseFloat(form.minimumStockQuantity || '0');
                 const isLowStock = currentQty > 0 && currentQty <= minQty;
                 const isOutOfStock = currentQty === 0;
                 
@@ -550,32 +600,49 @@ export function ProductForm({ form, onChange }: ProductFormProps) {
                 );
               }
 
+              if (field.code === 'supplierId') {
+                return (
+                  <div key={field.code}>
+                    <Label className="text-sm font-medium mb-2 block flex items-center gap-1.5">
+                      {field.label}
+                      <Truck className="h-3.5 w-3.5 text-muted-foreground" />
+                    </Label>
+                    <Select
+                      value={value || ''}
+                      onChange={(e) => {
+                        const selectedValue = e.target.value;
+                        updateField(field.code as keyof CreateProductInput, selectedValue || undefined);
+                      }}
+                      options={[
+                        { label: 'Select Supplier (Optional)', value: '' },
+                        ...suppliers.map(s => ({ label: s.supplierName, value: s.id }))
+                      ]}
+                      disabled={!editable || loadingSuppliers}
+                      className="w-full"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1.5">
+                      {loadingSuppliers ? 'Loading suppliers from supplier module...' : suppliers.length > 0 
+                        ? `Select from ${suppliers.length} active supplier(s) from supplier module` 
+                        : 'No active suppliers available. Create suppliers in the supplier module first.'}
+                    </p>
+                  </div>
+                );
+              }
+
               return (
                 <div key={field.code}>
                   <Label className="text-sm font-medium">{field.label}</Label>
-                  {field.type === 'select' && field.code === 'status' ? (
-                    <Select
-                      value={value || 'in_stock'}
-                      onChange={(e) =>
-                        updateField(field.code as keyof CreateProductInput, e.target.value)
-                      }
-                      options={STATUS_OPTIONS}
-                      disabled={!editable}
-                      className="w-full mt-1.5"
-                    />
-                  ) : (
-                    <Input
-                      type="number"
-                      min="0"
-                      value={value}
-                      onChange={(e) =>
-                        updateField(field.code as keyof CreateProductInput, e.target.value)
-                      }
-                      disabled={!editable}
-                      placeholder="0"
-                      className="mt-1.5"
-                    />
-                  )}
+                  <Input
+                    type="number"
+                    min="0"
+                    value={value}
+                    onChange={(e) =>
+                      updateField(field.code as keyof CreateProductInput, e.target.value)
+                    }
+                    disabled={!editable}
+                    placeholder="0"
+                    className="mt-1.5"
+                  />
                 </div>
               );
             })}
@@ -611,53 +678,34 @@ export function ProductForm({ form, onChange }: ProductFormProps) {
                     {field.label}
                     {iconMap[field.code] && iconMap[field.code]}
                   </Label>
-                  {field.type === 'select' && field.code === 'status' ? (
-                    <>
-                      <Select
-                        value={value || 'in_stock'}
-                        onChange={(e) =>
-                          updateField(field.code as keyof CreateProductInput, e.target.value)
-                        }
-                        options={STATUS_OPTIONS}
-                        disabled={!editable}
-                        className="w-full"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1.5">
-                        Current inventory status
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <Input
-                        type={field.type === 'url' ? 'url' : 'text'}
-                        value={value}
-                        onChange={(e) =>
-                          updateField(field.code as keyof CreateProductInput, e.target.value)
-                        }
-                        disabled={!editable}
-                        placeholder={
-                          field.code === 'image' 
-                            ? 'https://example.com/image.jpg' 
-                            : field.code === 'sku'
-                            ? 'SKU-12345'
-                            : field.code === 'category'
-                            ? 'Electronics, Clothing, etc.'
-                            : field.code === 'location'
-                            ? 'Warehouse A, Shelf B3'
-                            : field.label
-                        }
-                      />
-                      {field.code === 'image' && (
-                        <p className="text-xs text-muted-foreground mt-1.5">
-                          Enter a valid image URL
-                        </p>
-                      )}
-                      {field.code === 'sku' && (
-                        <p className="text-xs text-muted-foreground mt-1.5">
-                          Stock keeping unit or barcode
-                        </p>
-                      )}
-                    </>
+                  <Input
+                    type={field.type === 'url' ? 'url' : 'text'}
+                    value={value}
+                    onChange={(e) =>
+                      updateField(field.code as keyof CreateProductInput, e.target.value)
+                    }
+                    disabled={!editable}
+                    placeholder={
+                      field.code === 'image' 
+                        ? 'https://example.com/image.jpg' 
+                        : field.code === 'sku'
+                        ? 'SKU-12345'
+                        : field.code === 'category'
+                        ? 'Electronics, Clothing, etc.'
+                        : field.code === 'location'
+                        ? 'Warehouse A, Shelf B3'
+                        : field.label
+                    }
+                  />
+                  {field.code === 'image' && (
+                    <p className="text-xs text-muted-foreground mt-1.5">
+                      Enter a valid image URL
+                    </p>
+                  )}
+                  {field.code === 'sku' && (
+                    <p className="text-xs text-muted-foreground mt-1.5">
+                      Stock keeping unit or barcode
+                    </p>
                   )}
                 </div>
               );

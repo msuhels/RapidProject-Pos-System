@@ -75,10 +75,18 @@ export const PRODUCT_FIELDS: ProductFieldDefinition[] = [
   {
     name: 'MinimumStockQuantity',
     code: 'minimumStockQuantity',
-    label: 'Minimum Stock Quantity',
+    label: 'Minimum Stock Quantity (MSQ)',
     fieldType: 'number',
-    description: 'Minimum stock level before reorder alert',
+    description: 'Minimum stock level before reorder alert - Required field',
     sortOrder: 9,
+  },
+  {
+    name: 'Supplier',
+    code: 'supplierId',
+    label: 'Supplier',
+    fieldType: 'select',
+    description: 'Select supplier for this product',
+    sortOrder: 10,
   },
   {
     name: 'Image',
@@ -86,7 +94,7 @@ export const PRODUCT_FIELDS: ProductFieldDefinition[] = [
     label: 'Image URL',
     fieldType: 'url',
     description: 'Product image URL',
-    sortOrder: 10,
+    sortOrder: 11,
   },
   {
     name: 'Category',
@@ -94,7 +102,7 @@ export const PRODUCT_FIELDS: ProductFieldDefinition[] = [
     label: 'Category',
     fieldType: 'text',
     description: 'Product category',
-    sortOrder: 11,
+    sortOrder: 12,
   },
   {
     name: 'SKU',
@@ -102,7 +110,7 @@ export const PRODUCT_FIELDS: ProductFieldDefinition[] = [
     label: 'SKU / Barcode',
     fieldType: 'text',
     description: 'Stock keeping unit',
-    sortOrder: 12,
+    sortOrder: 13,
   },
   {
     name: 'Location',
@@ -110,14 +118,6 @@ export const PRODUCT_FIELDS: ProductFieldDefinition[] = [
     label: 'Location',
     fieldType: 'text',
     description: 'Inventory storage location',
-    sortOrder: 13,
-  },
-  {
-    name: 'Status',
-    code: 'status',
-    label: 'Status',
-    fieldType: 'select',
-    description: 'Inventory status (In Stock, Low Stock, Out of Stock)',
     sortOrder: 14,
   },
 ];

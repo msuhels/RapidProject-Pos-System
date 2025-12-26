@@ -60,87 +60,13 @@ const STANDARD_FIELDS = [
     )
   },
   { 
-    code: 'sellingPrice', 
-    label: 'Pricing', 
+    code: 'price', 
+    label: 'Actual Price', 
     render: (p: Product) => {
-      const selling = parseFloat(p.sellingPrice || '0');
-      const originalPrice = parseFloat(p.price || '0');
-      const discountValue = parseFloat(p.discountValue || '0');
-      const discountType = p.discountType;
-      const taxRate = parseFloat(p.taxRate || '0');
-      
-      if (isNaN(selling) || selling === 0) {
-        return <span className="text-muted-foreground">-</span>;
-      }
-
-      // Calculate price after discount (before tax)
-      let discountAmount = 0;
-      if (discountType === 'percentage' && originalPrice > 0) {
-        discountAmount = originalPrice * (discountValue / 100);
-      } else {
-        discountAmount = discountValue;
-      }
-      const priceAfterDiscount = Math.max(0, originalPrice - discountAmount);
-      const hasDiscount = discountValue > 0;
-
+      const price = parseFloat(p.price || '0');
+      if (price === 0) return <span className="text-muted-foreground">-</span>;
       return (
-        <div className="space-y-3 min-w-[220px]">
-          {/* Actual Price */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-muted-foreground">Actual:</span>
-            <span className="text-lg font-bold text-foreground">${originalPrice.toFixed(2)}</span>
-          </div>
-          
-          {/* Before Discount (with strikethrough) */}
-          {hasDiscount && (
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-muted-foreground">Before Discount:</span>
-              <span className="text-xl font-bold text-muted-foreground/70 line-through decoration-2 decoration-red-500">
-                ${originalPrice.toFixed(2)}
-              </span>
-            </div>
-          )}
-          
-          {/* Discount */}
-          {hasDiscount && (
-            <div className="bg-orange-50 dark:bg-orange-950/30 rounded-lg p-2.5 border border-orange-200 dark:border-orange-900/50">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-muted-foreground">Discount:</span>
-                <span className="text-lg font-bold text-orange-600">
-                  {discountType === 'percentage' ? `${discountValue.toFixed(0)}%` : `$${discountValue.toFixed(2)}`}
-                </span>
-              </div>
-              <div className="text-right mt-1">
-                <span className="text-xs text-muted-foreground">Save: </span>
-                <span className="text-sm font-bold text-orange-600">${discountAmount.toFixed(2)}</span>
-              </div>
-            </div>
-          )}
-          
-          {/* Final Selling Price */}
-          <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-3 border-2 border-green-200 dark:border-green-900/50">
-            <div className="flex items-baseline justify-between mb-1">
-              <span className="text-xs font-bold text-muted-foreground uppercase">Final Price:</span>
-              <span className="text-2xl font-black text-green-600 dark:text-green-500">
-                ${selling.toFixed(2)}
-              </span>
-            </div>
-            {hasDiscount && (
-              <div className="text-xs text-muted-foreground mt-2 pt-2 border-t border-green-200 dark:border-green-800">
-                <div className="flex justify-between mb-1">
-                  <span>After Discount:</span>
-                  <span className="font-semibold">${priceAfterDiscount.toFixed(2)}</span>
-                </div>
-                {taxRate > 0 && (
-                  <div className="flex justify-between">
-                    <span>Tax ({taxRate}%):</span>
-                    <span className="font-semibold text-blue-600">+${(selling - priceAfterDiscount).toFixed(2)}</span>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
+        <span className="font-medium text-foreground">${price.toFixed(2)}</span>
       );
     }
   },
@@ -156,49 +82,30 @@ const STANDARD_FIELDS = [
         <span className="text-muted-foreground text-sm">-</span>
       );
       
-      const originalPrice = parseFloat(p.price || '0');
-      let discountAmount = 0;
-      if (p.discountType === 'percentage') {
-        discountAmount = originalPrice * (value / 100);
-      } else {
-        discountAmount = value;
-      }
-      
       return (
-        <div className="space-y-1 min-w-[120px]">
-          <div className="flex items-center gap-2">
-            {p.discountType === 'percentage' ? (
-              <Percent className="h-4 w-4 text-orange-600" />
-            ) : (
-              <DollarSign className="h-4 w-4 text-orange-600" />
-            )}
-            <span className="text-lg font-bold text-orange-600 dark:text-orange-500">
-              {p.discountType === 'percentage' ? `${value.toFixed(0)}%` : `$${value.toFixed(2)}`}
-            </span>
-          </div>
-          <div className="text-xs text-muted-foreground font-medium">
-            Save ${discountAmount.toFixed(2)}
-          </div>
+        <div className="flex items-center gap-1.5">
+          {p.discountType === 'percentage' ? (
+            <Percent className="h-4 w-4 text-orange-600" />
+          ) : (
+            <DollarSign className="h-4 w-4 text-orange-600" />
+          )}
+          <span className="font-medium text-orange-600 dark:text-orange-500">
+            {p.discountType === 'percentage' ? `${value.toFixed(0)}%` : `$${value.toFixed(2)}`}
+          </span>
         </div>
       );
     }
   },
   { 
-    code: 'price', 
-    label: 'Original Price', 
+    code: 'sellingPrice', 
+    label: 'Final Price', 
     render: (p: Product) => {
-      const price = parseFloat(p.price || '0');
-      if (price === 0) return <span className="text-muted-foreground">-</span>;
-      const discountValue = parseFloat(p.discountValue || '0');
-      
+      const selling = parseFloat(p.sellingPrice || '0');
+      if (isNaN(selling) || selling === 0) {
+        return <span className="text-muted-foreground">-</span>;
+      }
       return (
-        <div>
-          {discountValue > 0 ? (
-            <span className="line-through text-muted-foreground text-sm">${price.toFixed(2)}</span>
-          ) : (
-            <span className="font-medium">${price.toFixed(2)}</span>
-          )}
-        </div>
+        <span className="font-semibold text-foreground">${selling.toFixed(2)}</span>
       );
     }
   },
@@ -258,6 +165,11 @@ const STANDARD_FIELDS = [
       </div>
     );
   }, superAdminOnly: true },
+  { 
+    code: 'supplierName', 
+    label: 'Supplier', 
+    render: (p: Product) => p.supplierName || <span className="text-muted-foreground">-</span> 
+  },
   { code: 'category', label: 'Category', render: (p: Product) => p.category || <span className="text-muted-foreground">-</span> },
   { code: 'location', label: 'Location', render: (p: Product) => p.location || <span className="text-muted-foreground">-</span>, superAdminOnly: true },
 ] as const;
@@ -294,6 +206,11 @@ export function ProductTable({
   }
 
   const visibleFields = STANDARD_FIELDS.filter((field) => {
+    // Always show discount field
+    if (field.code === 'discount') {
+      return true;
+    }
+
     // Check field-level permissions first
     if (!isFieldVisible('products', field.code)) {
       return false;

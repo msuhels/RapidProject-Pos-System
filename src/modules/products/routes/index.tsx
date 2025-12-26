@@ -25,11 +25,11 @@ const defaultForm: CreateProductInput = {
   price: '',
   quantity: '',
   minimumStockQuantity: '',
+  supplierId: undefined,
   image: '',
   category: '',
   sku: '',
   location: '',
-  status: 'in_stock',
   labelIds: [],
   discountType: 'amount',
   discountValue: '',
@@ -128,11 +128,11 @@ export default function ProductsPage() {
       discountValue: product.discountValue || '',
       quantity: product.quantity,
       minimumStockQuantity: product.minimumStockQuantity || '',
+      supplierId: product.supplierId || undefined,
       image: product.image || '',
       category: product.category || '',
       sku: product.sku || '',
       location: product.location || '',
-      status: product.status || 'in_stock',
       labelIds: product.labelIds || [],
     });
     setDialogOpen(true);
@@ -158,6 +158,10 @@ export default function ProductsPage() {
     }
     if (!form.quantity.trim()) {
       toast.error('Quantity is required');
+      return;
+    }
+    if (!form.minimumStockQuantity.trim()) {
+      toast.error('Minimum Stock Quantity (MSQ) is required');
       return;
     }
 

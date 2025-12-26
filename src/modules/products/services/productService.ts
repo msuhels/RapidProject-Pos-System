@@ -1,8 +1,25 @@
 import { and, desc, eq, ilike, isNull, or, ne } from 'drizzle-orm';
 import { db } from '@/core/lib/db';
 import { products } from '../schemas/productsSchema';
+import { suppliers } from '@/modules/supplier/schemas/supplierSchema';
 import { isUserSuperAdmin } from '@/core/lib/permissions';
 import type { Product, CreateProductInput, UpdateProductInput, ProductListFilters } from '../types';
+
+// Helper function to calculate product status based on quantity and minimum stock quantity
+function calculateProductStatus(quantity: string, minimumStockQuantity: string | null): string {
+  const qty = parseInt(quantity) || 0;
+  const minQty = parseInt(minimumStockQuantity || '0') || 0;
+  
+  if (qty === 0) {
+    return 'out_of_stock';
+  }
+  
+  if (minQty > 0 && qty <= minQty) {
+    return 'low_stock';
+  }
+  
+  return 'in_stock';
+}
 
 export async function listProductsForTenant(
   tenantId: string,
@@ -58,12 +75,16 @@ export async function listProductsForTenant(
   }
 
   const results = await db
-    .select()
+    .select({
+      product: products,
+      supplier: suppliers,
+    })
     .from(products)
+    .leftJoin(suppliers, eq(products.supplierId, suppliers.id))
     .where(and(...conditions))
     .orderBy(desc(products.createdAt));
 
-  return results.map((r) => ({
+  return results.map(({ product: r, supplier }) => ({
     ...r,
     labelIds: (r.labelIds as string[]) || [],
     image: r.image || null,
@@ -76,7 +97,9 @@ export async function listProductsForTenant(
     discountType: (r.discountType as 'percentage' | 'amount' | null) || null,
     discountValue: r.discountValue || null,
     minimumStockQuantity: r.minimumStockQuantity || null,
-    status: r.status || 'in_stock',
+    supplierId: r.supplierId || null,
+    supplierName: supplier?.supplierName || null,
+    status: calculateProductStatus(r.quantity, r.minimumStockQuantity),
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
     createdBy: r.createdBy || null,
@@ -114,14 +137,18 @@ export async function getProductById(
   }
 
   const result = await db
-    .select()
+    .select({
+      product: products,
+      supplier: suppliers,
+    })
     .from(products)
+    .leftJoin(suppliers, eq(products.supplierId, suppliers.id))
     .where(and(...conditions))
     .limit(1);
 
   if (result.length === 0) return null;
 
-  const r = result[0];
+  const { product: r, supplier } = result[0];
   return {
     ...r,
     labelIds: (r.labelIds as string[]) || [],
@@ -135,7 +162,9 @@ export async function getProductById(
     discountType: (r.discountType as 'percentage' | 'amount' | null) || null,
     discountValue: r.discountValue || null,
     minimumStockQuantity: r.minimumStockQuantity || null,
-    status: r.status || 'in_stock',
+    supplierId: r.supplierId || null,
+    supplierName: supplier?.supplierName || null,
+    status: calculateProductStatus(r.quantity, r.minimumStockQuantity),
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
     createdBy: r.createdBy || null,
@@ -152,6 +181,9 @@ export async function createProduct(params: {
 }): Promise<Product> {
   const { data, tenantId, userId } = params;
 
+  // Calculate status based on quantity and minimum stock quantity
+  const calculatedStatus = calculateProductStatus(data.quantity, data.minimumStockQuantity);
+
   const [result] = await db
     .insert(products)
     .values({
@@ -165,16 +197,28 @@ export async function createProduct(params: {
       discountValue: data.discountValue || null,
       quantity: data.quantity,
       minimumStockQuantity: data.minimumStockQuantity || null,
+      supplierId: data.supplierId || null,
       image: data.image || null,
       category: data.category || null,
       sku: data.sku || null,
       location: data.location || null,
-      status: data.status || 'in_stock',
+      status: calculatedStatus,
       labelIds: data.labelIds || [],
       createdBy: userId,
       updatedBy: userId,
     })
     .returning();
+
+  // Fetch supplier name if supplierId exists
+  let supplierName = null;
+  if (result.supplierId) {
+    const supplier = await db
+      .select()
+      .from(suppliers)
+      .where(eq(suppliers.id, result.supplierId))
+      .limit(1);
+    supplierName = supplier[0]?.supplierName || null;
+  }
 
   return {
     ...result,
@@ -189,7 +233,9 @@ export async function createProduct(params: {
     discountType: (result.discountType as 'percentage' | 'amount' | null) || null,
     discountValue: result.discountValue || null,
     minimumStockQuantity: result.minimumStockQuantity || null,
-    status: result.status || 'in_stock',
+    supplierId: result.supplierId || null,
+    supplierName,
+    status: calculatedStatus,
     createdAt: result.createdAt.toISOString(),
     updatedAt: result.updatedAt.toISOString(),
     createdBy: result.createdBy || null,
@@ -211,6 +257,15 @@ export async function updateProduct(params: {
   const existing = await getProductById(id, tenantId, userId);
   if (!existing) return null;
 
+  // Calculate new quantity and minimum stock quantity
+  const newQuantity = data.quantity ?? existing.quantity;
+  const newMinimumStockQuantity = data.minimumStockQuantity !== undefined 
+    ? (data.minimumStockQuantity || null) 
+    : existing.minimumStockQuantity;
+  
+  // Calculate status based on updated quantity and MSQ
+  const calculatedStatus = calculateProductStatus(newQuantity, newMinimumStockQuantity);
+
   const [result] = await db
     .update(products)
     .set({
@@ -221,19 +276,31 @@ export async function updateProduct(params: {
       taxRate: data.taxRate !== undefined ? data.taxRate || null : existing.taxRate,
       discountType: data.discountType !== undefined ? (data.discountType || null) : existing.discountType,
       discountValue: data.discountValue !== undefined ? data.discountValue || null : existing.discountValue,
-      quantity: data.quantity ?? existing.quantity,
-      minimumStockQuantity: data.minimumStockQuantity !== undefined ? data.minimumStockQuantity || null : existing.minimumStockQuantity,
+      quantity: newQuantity,
+      minimumStockQuantity: newMinimumStockQuantity,
+      supplierId: data.supplierId !== undefined ? (data.supplierId || null) : existing.supplierId,
       image: data.image !== undefined ? data.image || null : existing.image,
       category: data.category !== undefined ? data.category || null : existing.category,
       sku: data.sku !== undefined ? data.sku || null : existing.sku,
       location: data.location !== undefined ? data.location || null : existing.location,
-      status: data.status ?? existing.status,
+      status: calculatedStatus,
       labelIds: data.labelIds ?? existing.labelIds,
       updatedBy: userId,
       updatedAt: new Date(),
     })
     .where(and(eq(products.id, id), eq(products.tenantId, tenantId)))
     .returning();
+
+  // Fetch supplier name if supplierId exists
+  let supplierName = null;
+  if (result.supplierId) {
+    const supplier = await db
+      .select()
+      .from(suppliers)
+      .where(eq(suppliers.id, result.supplierId))
+      .limit(1);
+    supplierName = supplier[0]?.supplierName || null;
+  }
 
   return {
     ...result,
@@ -248,7 +315,9 @@ export async function updateProduct(params: {
     discountType: (result.discountType as 'percentage' | 'amount' | null) || null,
     discountValue: result.discountValue || null,
     minimumStockQuantity: result.minimumStockQuantity || null,
-    status: result.status || 'in_stock',
+    supplierId: result.supplierId || null,
+    supplierName,
+    status: calculatedStatus,
     createdAt: result.createdAt.toISOString(),
     updatedAt: result.updatedAt.toISOString(),
     createdBy: result.createdBy || null,
@@ -328,7 +397,8 @@ export async function duplicateProduct(
       discountType: existing.discountType || undefined,
       discountValue: existing.discountValue || undefined,
       quantity: existing.quantity,
-      minimumStockQuantity: existing.minimumStockQuantity || undefined,
+      minimumStockQuantity: existing.minimumStockQuantity || '',
+      supplierId: existing.supplierId || undefined,
       image: existing.image || undefined,
       category: existing.category || undefined,
       labelIds: existing.labelIds,
@@ -363,11 +433,7 @@ export async function decreaseProductQuantity(
     .update(products)
     .set({
       quantity: newQuantity.toString(),
-      status: (() => {
-        if (newQuantity === 0) return 'out_of_stock';
-        const minStock = parseInt(product.minimumStockQuantity || '10') || 10;
-        return newQuantity < minStock ? 'low_stock' : 'in_stock';
-      })(),
+      status: calculateProductStatus(newQuantity.toString(), product.minimumStockQuantity),
       updatedBy: userId,
       updatedAt: new Date(),
     })
@@ -436,7 +502,7 @@ export async function increaseProductQuantity(
     .update(products)
     .set({
       quantity: newQuantity.toString(),
-      status: newQuantity === 0 ? 'out_of_stock' : newQuantity < 10 ? 'low_stock' : 'in_stock',
+      status: calculateProductStatus(newQuantity.toString(), product.minimumStockQuantity),
       updatedBy: userId,
       updatedAt: new Date(),
     })
